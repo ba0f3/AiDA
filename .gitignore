@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# just in case
+ai_assistant.cfg 
