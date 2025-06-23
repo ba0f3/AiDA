@@ -1,12 +1,12 @@
-# AiDA - AI Assistant for IDA Pro
+# AiDA - AI Assistant for IDA 9.0+
 
 ![Public](https://img.shields.io/badge/License-MIT-blue.svg)
 
-AiDA is an AI-powered assistant plugin for IDA Pro 9.0+, designed to accelerate the reverse engineering of modern C++ games. It leverages large language models (Gemini, OpenAI, Anthropic) to provide deep analysis, suggest names, generate C++ structures, and more, directly within the IDA environment.
+AiDA is an AI-powered assistant plugin for IDA 9.0+, designed to accelerate the reverse engineering of modern C++ games. It leverages large language models (Gemini, OpenAI, Anthropic) to provide deep analysis, suggest names, generate C++ structures, and more, directly within the IDA environment.
 
 ## Features
 
-*   **Hybrid Engine Scanning:** Combines static pattern scanning (GSpots) and advanced AI analysis to locate critical Unreal Engine globals like `GWorld`, `GNames`, and `GObjects`.
+*   (COMING SOON!) **Hybrid Engine Scanning:** Combines static pattern scanning (GSpots) and advanced AI analysis to locate critical Unreal Engine globals like `GWorld`, `GNames`, and `GObjects`.
 *   **In-Depth Function Analysis:** Provides a detailed report on a function's purpose, logic, inputs/outputs, and potential game hacking opportunities.
 *   **Automatic Renaming:** Suggests descriptive, context-aware names for functions.
 *   **Struct Generation:** Reconstructs C++ structs from function disassembly, automatically handling padding and member offsets.
@@ -16,9 +16,9 @@ AiDA is an AI-powered assistant plugin for IDA Pro 9.0+, designed to accelerate 
 
 ## Installation
 
-1.  Ensure you have a compatible version of IDA Pro (9.0+ recommended) and its associated Python 3 environment.
+1.  Ensure you have a compatible version of IDA (9.0+ recommended) and its associated Python 3 environment.
 2.  Clone this repository or download it as a ZIP file.
-3.  Copy the `AiDA` folder and the `AiDA_loader.py` file into your IDA Pro plugins directory. The path is typically:
+3.  Copy the `AiDA` folder and the `AiDA_loader.py` file into your IDA plugins directory. The path is typically:
     *   `C:\Users\YOUR_USERNAME\AppData\Roaming\Hex-Rays\IDA Pro\plugins`
 4.  Your plugins folder should look like this:
     ```
@@ -60,6 +60,8 @@ AiDA is an AI-powered assistant plugin for IDA Pro 9.0+, designed to accelerate 
 
     # For Anthropic
     <path_to_ida_python> -m pip install anthropic
+
+    However, if the commands above do not work, simply open cmd and 'pip install' without needing a path.
     ```
 
 ## Configuration
