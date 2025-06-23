@@ -95,6 +95,15 @@ class AIAssistantPlugin(ida_idaapi.plugin_t):
     def run(self, arg):
         ida_kernwin.info("AI Assistant is active. Use the right-click context menu in a code view.")
 
+    def term(self):
+        if self.hooks:
+            self.hooks.unhook()
+
+        for action_name in self.actions_list:
+            ida_kernwin.unregister_action(action_name)
+
+        ida_kernwin.msg("--- To use AiDA: Edit -> Plugins -> AI Assistant ---\n")
+
 _plugin_instance = None
 def PLUGIN_ENTRY():
     global _plugin_instance
