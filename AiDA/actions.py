@@ -63,19 +63,12 @@ def handle_auto_comment(ctx, plugin):
             ida_kernwin.msg("AI-generated comment already exists.\n")
 
 def handle_generate_struct(ctx, plugin):
-    from .ai import prompts
-    context = ida_utils.get_context_for_prompt(ctx.cur_ea, include_struct_context=True)
-    if not context["ok"]:
-        ida_kernwin.warning(f"AiDA: {context['message']}")
-        return
+    struct_cpp = plugin.ai_client.generate_struct(ctx.cur_ea)
 
-    prompt = prompts.GENERATE_STRUCT_PROMPT.format(
-        code=context["code"],
-        struct_context=context["struct_context"]
-    )
-    struct_cpp = plugin.ai_client._generate(prompt, 0.0)
     if struct_cpp and "Error:" not in struct_cpp:
         ida_utils.apply_struct_from_cpp(struct_cpp, ctx.cur_ea)
+    elif struct_cpp:
+        ida_kernwin.warning(f"AiDA: {struct_cpp}")
 
 def handle_generate_hook(ctx, plugin):
     func = ida_funcs.get_func(ctx.cur_ea)
