@@ -74,35 +74,32 @@ Good examples: `UHealthComponent::ApplyDamage`, `APlayerController::ServerUpdate
 """
 
 GENERATE_STRUCT_PROMPT = BASE_PROMPT + """
-Analyze the function's memory accesses and surrounding data cross-references to reconstruct the C++ class or struct being manipulated.
-- Identify member variables accessed via offsets from a base pointer (likely 'this' in RCX).
-- **Use IDA's specific integer types (`__int8`, `__int16`, `__int32`, `__int64`) instead of standard C types (`char`, `int`, `unsigned long`, etc.).** This is crucial for the parser.
-- Deduce their likely data type (e.g., `float`, `bool`, `FVector`, `UObject*`, `TArray<...>`) and a descriptive name.
-- Pay close attention to virtual function calls (e.g., `(*(void (__fastcall **)(_QWORD))(**v8 + 0x1B8LL))(*v8);`) to identify the VTable.
-- Use the provided data cross-references to confirm member types and usage patterns.
-- **CRITICAL: You MUST account for padding.** If there is a gap between the end of one member and the start of the next, you MUST fill it with a `char pad_...[size];` member. This is the most common reason for parsing failure.
+You are an expert reverse engineer specializing in C++ game engines. Your task is to analyze the provided function's memory accesses to reconstruct the C++ class or struct it manipulates.
 
-Return the result as a single, clean C++ struct definition inside a markdown code block.
-- The struct name should be a plausible PascalCase name.
-- Start with the VTable (`__int64 VTable; // 0x0000`) if virtual functions are present. A VTable is a list of function pointers used for polymorphism.
-- Add comments with the byte offset for every member. Offsets start at 0x0.
+**Analysis Steps:**
+1.  **Determine Function Role:** First, identify if this function is a class method (operating on `this`), a constructor, or a static/global utility function. The base pointer for member access will change depending on the role.
+2.  **Identify Base Pointer:** Find the register that acts as the base pointer for member accesses (e.g., `RCX` for a `this` pointer, or a stack pointer for a locally constructed object).
+3.  **Reconstruct the Struct:**
+    - Identify all member variables accessed via offsets from the base pointer.
+    - **Use IDA's specific integer types (`__int8`, `__int16`, `__int32`, `__int64`) instead of standard C types.** This is critical for the parser.
+    - Deduce the data type (`float`, `bool`, `FVector*`, `UObject*`, etc.) and a descriptive name for each member.
+    - Identify the VTable by looking for virtual function calls (e.g., `call qword ptr [rax+1B8h]`). The VTable is almost always the first member at offset `0x0`.
+    - **CRITICAL: You MUST account for padding.** If there is a gap between members, you MUST fill it with a `char pad_...[size];` member. This is the most common reason for parsing failure.
+4.  **Final Output:**
+    - Return the result as a single, clean C++ struct definition inside a markdown code block.
+    - The struct name should be a plausible PascalCase name based on the function's context.
+    - Add comments with the byte offset for every member, starting at `0x0`.
+    - **If you cannot confidently identify a struct**, do not invent one. Instead, return a markdown block explaining the memory operations you observe (e.g., "This function appears to construct a temporary string object on the stack.").
 
-**Bad Example (Missing Padding):**
+**Good Example (Correct Padding & VTable):**
 ```cpp
-struct BadStruct
+struct APlayerCharacter
 {{
-    __int32 MemberA; // 0x0090
-    __int64 MemberB; // 0x0098  <-- WRONG! There is a 4-byte gap after MemberA.
-}};
-```
-
-**Good Example (Correct Padding):**
-```cpp
-struct GoodStruct
-{{
-    __int32 MemberA; // 0x0090
-    char pad_0094; // 0x0094
-    __int64 MemberB; // 0x0098
+    __int64 VTable;       // 0x0000
+    char pad_0008[0x88];  // 0x0008
+    __int32 Health;       // 0x0090
+    __int32 MaxHealth;    // 0x0094
+    __int64 MovementComponent; // 0x0098
 }};
 ```
 
@@ -114,7 +111,10 @@ struct GoodStruct
 ```
 
 **Struct Member Usage & Data Cross-References:**
+The following context shows how members of the struct are used, both within this function and globally across the program. This is the most important information for determining member types and names.
+```cpp
 {struct_context}
+```
 --- END CONTEXT ---
 """
 
@@ -157,7 +157,6 @@ Focus on aspects relevant to game hacking. Use the provided context to inform yo
 --- END CONTEXT ---
 """
 
-# New, more specific prompts for the AI-driven scanner
 AI_FIND_ROOT_FUNCTION_PROMPT = """
 You are an expert in x86-64 assembly, specifically for Unreal Engine games.
 Analyze the following function disassembly.
@@ -171,7 +170,6 @@ Function Disassembly:
 ---
 """
 
-# *** NEW, IMPROVED PROMPT FOR FINDING ENCRYPTED AND DIRECT POINTERS ***
 LOCATE_GLOBAL_POINTER_PROMPT = BASE_PROMPT + """
 You are an expert in x86-64 assembly, specifically for Unreal Engine games.
 Your task is to analyze the provided function to find the absolute address of the global pointer for `{target_name}`.
