@@ -74,6 +74,10 @@ AiDA is an AI-powered assistant plugin for IDA 9.0+, designed to accelerate the 
 
 Simply right-click within a disassembly or pseudocode view in IDA to access the `AI Assistant` context menu. From there, you can select any of the analysis or generation features.
 
+## Important Note
+Please be aware that AiDA is currently in **BETA** and is not yet fully stable. You may encounter bugs or unexpected behavior.
+If you experience any issues or have bug reports, please reach out to "firewl" on Discord by sending a friend request, or by making a bug report on GitHub.
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
