@@ -82,7 +82,7 @@ You are an expert reverse engineer specializing in C++ game engines. Your task i
 3.  **Reconstruct the Struct:**
     - Identify all member variables accessed via offsets from the base pointer.
     - **Use IDA's specific integer types (`__int8`, `__int16`, `__int32`, `__int64`) instead of standard C types.** This is critical for the parser.
-    - Deduce the data type (`float`, `bool`, `FVector*`, `UObject*`, etc.) and a descriptive name for each member.
+    - Deduce the data type (`float`, `bool`, `FVector*`, `UObject*`, etc.) and a descriptive name for each member. Pay close attention to the size of the memory operation (e.g., a `mov` to `eax` implies a 4-byte member, `al` implies a 1-byte member).
     - Identify the VTable by looking for virtual function calls (e.g., `call qword ptr [rax+1B8h]`). The VTable is almost always the first member at offset `0x0`.
     - **CRITICAL: You MUST account for padding.** If there is a gap between members, you MUST fill it with a `char pad_...[size];` member. This is the most common reason for parsing failure.
 4.  **Final Output:**
@@ -172,7 +172,7 @@ Function Disassembly:
 
 LOCATE_GLOBAL_POINTER_PROMPT = BASE_PROMPT + """
 You are an expert in x86-64 assembly, specifically for Unreal Engine games.
-Your task is to analyze the provided function to find the absolute address of the global pointer for `{target_name}`.
+Your task is to analyze the provided function to find the single instruction that loads the address of the global pointer for `{target_name}`.
 
 There are two primary patterns for this. Analyze the function for both.
 
@@ -182,8 +182,6 @@ This is common in games without pointer protection. The pointer is loaded in a s
    - Example: `LEA RCX, [rip+0x1234567]`
    - Example: `MOV RAX, [rip+0xABCDEF0]`
 2. The result of this instruction is the address of the global pointer itself (e.g., a `UWorld**`).
-3. If you find this pattern, calculate the absolute address: `FinalAddress = InstructionAddress + InstructionSize + Displacement`.
-   - For most relevant instructions, `InstructionSize` is 7.
 
 **Pattern B: Obfuscated/Encrypted Access (Very Common)**
 This is used in most modern games. The pointer is decrypted by a function call.
@@ -195,11 +193,10 @@ This is used in most modern games. The pointer is decrypted by a function call.
      .text:00000001412B4A44    CALL  sub_140B8A090          ; <-- This is the decryption stub. It returns the real pointer in RAX.
      ```
 3. The instruction that loads the address of the encrypted data is the one that reveals the location.
-4. Calculate the absolute address of that data using the `LEA`/`MOV` instruction: `FinalAddress = InstructionAddress + InstructionSize + Displacement`.
 
 **Your Task:**
 1. Analyze the decompiled code and find the single instruction (`LEA` or `MOV`) that fits either **Pattern A** or **Pattern B** to locate the `{target_name}` data.
-2. Calculate the final, absolute address of the `{target_name}` pointer data.
+2. From that instruction, extract the final, absolute address of the `{target_name}` pointer data.
 3. **Return ONLY the final calculated absolute address.** For example: `0x14AD3FE80`.
 4. If you cannot determine the address with high confidence from either pattern, return the single word "None".
 
