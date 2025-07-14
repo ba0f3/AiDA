@@ -17,12 +17,31 @@ AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) writt
 
 ## Installation
 
+To install and run AiDA, follow these steps:
+
+### Prerequisites
+
+Before installing the AiDA plugin, ensure you have the following essential dependencies:
+
+1.  **Microsoft Visual C++ Redistributables:** Install the official Microsoft Visual C++ Redistributables. These are crucial for many C++ applications on Windows.
+
+2.  **OpenSSL:** Install OpenSSL. For Windows, a reliable third-party installer can be found at [https://slproweb.com/products/Win32OpenSSL.html](https://slproweb.com/products/Win32OpenSSL.html).
+    * The "Win64 OpenSSL v3.x.x Light" version should typically be sufficient.
+    * Please use the installer (`.exe`). During the installation process, it is critical to choose the following option when prompted:
+        * Copy OpenSSL DLLs to:
+            * ✅ **The Windows system directory** (check this one!)
+            * 🚫 The OpenSSL binaries (`/bin`) directory (do **not** check this one!)
+
+### Plugin Installation
+
+Once the prerequisites are met:
+
 1.  Go to the [**Releases**](https://github.com/sigwl/AiDA/releases) page of this repository.
 2.  Download the latest release ZIP file (e.g., `AiDA_v1.1.zip`).
 3.  Extract the archive. You will find an `AiDA.dll` file.
 4.  Copy `AiDA.dll` into your IDA Pro plugins directory. The path is typically:
-    *   `%APPDATA%\Hex-Rays\IDA Pro\plugins` on Windows
-    *   `$HOME/.idapro/plugins` on Linux/Mac
+    * `%APPDATA%\Hex-Rays\IDA Pro\plugins` on Windows
+    * `$HOME/.idapro/plugins` on Linux/Mac
 
 ## Configuration
 
