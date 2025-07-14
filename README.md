@@ -81,8 +81,9 @@ Simply right-click within a disassembly or pseudocode view in IDA to access the 
 Please be aware that AiDA is currently in **BETA** and is not yet fully stable. You may encounter bugs or unexpected behavior.
 
 If you experience any issues or have bug reports, please:
-*   Create an issue on the [GitHub repository](https://github.com/sigwl/AiDA/issues).
-*   Or, reach out to **"firewl"** on Discord by sending a friend request.
+* Create an issue on the [GitHub repository](https://github.com/sigwl/AiDA/issues).
+* Join our Discord server for support and discussions: [https://discord.gg/JMRkEThbUU](https://discord.gg/JMRkEThbUU)
+* Or, reach out to **"firewl"** on Discord by sending a friend request.
 
 ## License
 
