@@ -1,10 +1,20 @@
-# AiDA - AI Assistant for IDA Pro
+<h1 align="left">AiDA - AI Assistant for IDA Pro</h1>
 
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
-
-AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) written in C++ to provide maximum speed and stability. It's designed to accelerate the reverse engineering of modern C++ games by leveraging large language models (Google Gemini, OpenAI, and Anthropic) directly within the IDA environment.
-
-## Features
+<p align="left">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
+  <img src="https://img.shields.io/github/stars/sigwl/AiDA" alt="Stars">
+  <img src="https://img.shields.io/github/forks/sigwl/AiDA" alt="Forks">
+</p>
+<p>AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) written in C++ to provide maximum speed and stability. It's designed to accelerate the reverse engineering of modern C++ games by leveraging large language models (Google Gemini, OpenAI, and Anthropic) directly within the IDA environment.</p>
+<p><a href="#features">Features</a> &bull; 
+  <a href="#installation">Installation</a> &bull; 
+  <a href="#configuration">Configuration</a> &bull; 
+  <a href="#usage">Usage</a> &bull; 
+  <a href="#important-note">Important Note</a> &bull; 
+  <a href="#license">License</a> &bull; 
+  <a href="https://discord.gg/JMRkEThbUU">Discord</a>
+</p>
+<h2>Features</h2>
 
 *   **(COMING SOON!) Hybrid Engine Scanning:** Combines static pattern scanning (GSpots) and advanced AI analysis to locate critical Unreal Engine globals like `GWorld`, `GNames`, and `GObjects`.
 *   **In-Depth Function Analysis:** Provides a detailed report on a function's purpose, logic, inputs/outputs, and potential game hacking opportunities.
@@ -17,12 +27,53 @@ AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) writt
 
 ## Installation
 
+To install and run AiDA, follow these steps:
+
+### Prerequisites
+
+Before installing the AiDA plugin, ensure you have the following essential dependencies:
+
+1.  **Microsoft Visual C++ Redistributables:** Install the official Microsoft Visual C++ Redistributables. These are crucial for many C++ applications on Windows.
+
+2.  **OpenSSL:** Install OpenSSL. For Windows, a reliable third-party installer can be found at [https://slproweb.com/products/Win32OpenSSL.html](https://slproweb.com/products/Win32OpenSSL.html).
+    * The "Win64 OpenSSL v3.x.x Light" version should typically be sufficient.
+    * Please use the installer (`.exe`). During the installation process, it is critical to choose the following option when prompted:
+        * Copy OpenSSL DLLs to:
+            * ✅ **The Windows system directory** (check this one!)
+            * 🚫 The OpenSSL binaries (`/bin`) directory (do **not** check this one!)
+
+### Plugin Installation
+
+Once the prerequisites are met:
+
 1.  Go to the [**Releases**](https://github.com/sigwl/AiDA/releases) page of this repository.
 2.  Download the latest release ZIP file (e.g., `AiDA_v1.1.zip`).
 3.  Extract the archive. You will find an `AiDA.dll` file.
 4.  Copy `AiDA.dll` into your IDA Pro plugins directory. The path is typically:
-    *   `%APPDATA%\Hex-Rays\IDA Pro\plugins` on Windows
-    *   `$HOME/.idapro/plugins` on Linux/Mac
+    * `%APPDATA%\Hex-Rays\IDA Pro\plugins` on Windows
+    * `$HOME/.idapro/plugins` on Linux/Mac
+
+## MCP Installation
+
+AiDA also supports Model Context Protocol (MCP) integration. This feature is based on the excellent work from [ida-pro-mcp](https://github.com/mrexodia/ida-pro-mcp) by mrexodia.
+
+### Prerequisites
+
+Ensure you have **Python 3.11** or higher installed on your system.
+
+### Installation Steps
+
+1.  Install AiDA via pip:
+    ```bash
+    pip install git+https://github.com/sigwl/AiDA
+    ```
+
+2.  Run the installation command to automatically copy the plugin to your IDA Pro plugins directory:
+    ```bash
+    aida --install
+    ```
+
+3.  Open IDA Pro, go to **Edit → Plugins**, and click **AiDA-MCP** to activate the Model Context Protocol support.
 
 ## Configuration
 
@@ -30,10 +81,30 @@ AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) writt
 2.  You can also access it at any time via the right-click context menu in a disassembly or pseudocode view: `AI Assistant > Settings...`.
 3.  In the settings dialog, select your desired AI Provider and enter your API key. The key will be saved locally in your user directory (`%APPDATA%\Hex-Rays\IDA Pro\ai_assistant.cfg`) and is never transmitted anywhere except to the AI provider's API.
 
+### GitHub Copilot Configuration (Special Instructions)
+
+Using GitHub Copilot requires an external proxy server that translates Copilot's API into a standard format.
+
+**Step 1: Run the Copilot API Proxy**
+You must have the `copilot-api` server running in the background. This server handles authentication with your GitHub account.
+1.  Make sure you have [Bun](https://bun.sh/) installed.
+2.  Open a terminal or command prompt and run the following command:
+    ```bash
+    npx copilot-api@latest start
+    ```
+3.  The first time you run this, it will guide you through a one-time authentication process with GitHub.
+4.  Leave this terminal window open. The proxy server must be running for AiDA to use Copilot.
+
+**Step 2: Configure AiDA**
+1.  In IDA, open the AiDA settings (`AI Assistant > Settings...`).
+2.  Set the **Provider** to `Copilot`.
+3.  Ensure the **Proxy Address** in the `Copilot` tab is correct. The default is `http://127.0.0.1:4141`, which should work if you ran the command above without changes.
+4.  Select your desired Copilot model (e.g., `claude-sonnet-4`).
+
 ### API Provider Configuration
 *   **Provider:** Choose the AI service you want to use (Gemini, OpenAI, or Anthropic).
 *   **API Key:** Your personal key for the selected provider. This is required for authentication.
-*   **Model Name:** Specify which model to use. More powerful models (like GPT-4 Turbo or Claude 3 Opus) provide higher-quality analysis but cost more per use. Lighter models (like Gemini 1.5 Flash or GPT-4o mini) are faster and cheaper.
+*   **Model Name:** Specify which model to use. More powerful models (like Gemini 2.5 Pro or Claude 4 Opus) provide higher-quality analysis but cost more per use. Lighter models (like Gemini 1.5 Flash or GPT-4o mini) are faster and cheaper.
 
 > **IMPORTANT: Model Choice Determines Output Quality**
 > The quality of the AI model you select is the single most important factor affecting the accuracy and insightfulness of the results. For critical analysis of complex functions, using a top-tier model is **strongly recommended**.
@@ -62,8 +133,9 @@ Simply right-click within a disassembly or pseudocode view in IDA to access the 
 Please be aware that AiDA is currently in **BETA** and is not yet fully stable. You may encounter bugs or unexpected behavior.
 
 If you experience any issues or have bug reports, please:
-*   Create an issue on the [GitHub repository](https://github.com/sigwl/AiDA/issues).
-*   Or, reach out to **"firewl"** on Discord by sending a friend request.
+* Create an issue on the [GitHub repository](https://github.com/sigwl/AiDA/issues).
+* Join our Discord server for support and discussions: [https://discord.gg/JMRkEThbUU](https://discord.gg/JMRkEThbUU)
+* Or, reach out to **"firewl"** on Discord by sending a friend request.
 
 ## License
 
