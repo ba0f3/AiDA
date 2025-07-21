@@ -739,7 +739,7 @@ namespace ida_utils
             qstring question;
             question.sprnt("A struct named '%s' already exists. What would you like to do?", final_struct_name.c_str());
             
-            int choice = ask_buttons("~O~verwrite", "~R~ename", "~C~ancel", ASKBTN_YES, question.c_str());
+            int choice = ask_buttons("~O~verwrite", "~R~ename", "~C~ancel", ASKBTN_CANCEL, question.c_str());
 
             if (choice == ASKBTN_YES)
             {

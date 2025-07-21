@@ -6,6 +6,7 @@ Your role is to act as a helpful assistant to a reverse engineer.
 Your analysis must be precise, technical, and directly useful for a game hacking context.
 Explain your reasoning clearly, as if teaching a beginner.
 Assume the code is from a 64-bit Windows game unless told otherwise.
+**Your answers must be derived *solely* from the provided context. Do not invent, assume, or hallucinate any information not present in the context.**
 Provide ONLY the specific information requested in the specified format. Do not add conversational fluff, greetings, apologies, or unnecessary explanations outside of the requested format.
 )V0G0N";
 
@@ -15,10 +16,10 @@ Analyze the provided function and its context from a game. Produce a detailed, s
 1.  **High-Level Purpose:** A single, concise sentence explaining what this function likely does in the game.
     *Example: "This function likely calculates the damage to apply to a player when they are hit by a projectile."*
 
-2.  **Detailed Logic Flow:** A bulleted list detailing the step-by-step logic. Explain complex calculations, important conditional checks, loops, and interactions with game objects. Use the call graph context to understand the function's role in a larger sequence of events.
-    *Example: "- Checks if the target object at [RCX+0x120] is valid. - Reads the target's current health from offset 0x1A8. - Subtracts the incoming damage amount, passed in RDX."*
+2.  **Detailed Logic Flow:** A bulleted list detailing the step-by-step logic. For each step, explain not just *what* it does, but *why* it likely does it in the context of the function's overall purpose. Explain complex calculations, the purpose of important conditional checks, loops, and interactions with game objects. Use the call graph context to understand the function's role in a larger sequence of events.
+    *Example: "- Checks if the target object at [RCX+0x120] is valid, likely to prevent a crash if the target is destroyed. - Reads the target's current health from offset 0x1A8. - Subtracts the incoming damage amount, passed in RDX, to calculate the new health value."*
 
-3.  **Function Inputs (Arguments) & Return Value:** Identify likely arguments and the return value. For 64-bit, arguments are often in registers RCX, RDX, R8, R9, then the stack. The return value is usually in RAX. Guess their C++ types (e.g., `ACharacter*`, `FVector`, `float`, `bool`) and their purpose. Use the local variables list to confirm your guesses.
+3.  **Function Inputs (Arguments) & Return Value:** Identify likely arguments and the return value. For the x64 Microsoft ABI, arguments are often in registers RCX, RDX, R8, R9, then the stack. The return value is usually in RAX. **Infer the likely C++ types** (e.g., `ACharacter*`, `FVector`, `float`, `bool`) and their purpose based on their usage in the function body and the local variables list. **If a type is not clear, state it as `void*` or `unknown_t` and explain the uncertainty.**
     *Example: "- RCX (Argument 1): Likely a pointer to the player or entity being damaged (e.g., `ACharacter* this`). - RDX (Argument 2): The amount of damage to apply (e.g., `float damage_amount`). - RAX (Return Value): The final calculated damage, or perhaps the remaining health (e.g., `float final_damage`)."*
 
 4.  **Identified Pattern/Role:** Name the programming pattern (e.g., virtual function call, singleton access, event callback) and its specific role in the game. Use the call graph context to determine if this is a high-level manager function or a low-level utility.
@@ -104,7 +105,7 @@ You are an expert reverse engineer specializing in C++ game engines. Your task i
     - Identify all member variables accessed via offsets from the base pointer.
     - **Use IDA's specific integer types (`__int8`, `__int16`, `__int32`, `__int64`) instead of standard C types.** This is critical for the parser.
     - Deduce the data type (`float`, `bool`, `FVector*`, `UObject*`, etc.) and a descriptive name for each member. Pay close attention to the size of the memory operation (e.g., a `mov` to `eax` implies a 4-byte member, `al` implies a 1-byte member).
-    - Identify the VTable by looking for virtual function calls (e.g., `call qword ptr [rax+1B8h]`). The VTable is almost always the first member at offset `0x0`.
+    - Identify the VTable by looking for virtual function calls (e.g., `call qword ptr [rax+1B8h]`). The VTable is almost always the first member at offset `0x0`. Name it `__vftable`.
     - **CRITICAL: You MUST account for padding.** If there is a gap between members, you MUST fill it with a `char pad_...[size];` member. This is the most common reason for parsing failure.
 4.  **Final Output:**
     - **Return ONLY the C++ struct definition inside a single markdown code block.**
@@ -117,7 +118,7 @@ You are an expert reverse engineer specializing in C++ game engines. Your task i
 ```cpp
 struct APlayerCharacter
 {{
-    __int64 VTable;       // 0x0000
+    __int64 __vftable;    // 0x0000
     char pad_0008[0x88];  // 0x0008
     __int32 Health;       // 0x0090
     __int32 MaxHealth;    // 0x0094
@@ -144,14 +145,19 @@ const char* const GENERATE_HOOK_PROMPT = R"V0G0N(
 The user wants to hook the function below.
 Generate a C++ code snippet using MinHook for an internal cheat.
 The snippet should include:
-1.  A typedef for the original function's signature. Infer the parameters and return type from the decompilation.
+1.  A typedef for the original function's signature. **Use the provided Function Prototype as the primary source for the signature.**
 2.  A global variable to store the address of the original, unhooked function.
 3.  A hooked function (`hkFunctionName`) that prints the key arguments (especially class pointers or important values) and then calls the original function, returning its result.
 4.  A comment showing how to install the hook in a `MH_CreateHook` call.
 
-Function Name: `{func_name}`
-Function Address: `0x{func_ea:X}`
-Decompiled Code:
+**Function Prototype:**
+```cpp
+{func_prototype}
+```
+
+**Function Name:** `{func_name}`
+**Function Address:** `{func_ea_hex}`
+**Decompiled Code:**
 ```cpp
 {code}
 ```
@@ -205,8 +211,8 @@ This is used in most modern games. The pointer is decrypted by a function call.
 
 **Your Task:**
 1. Analyze the decompiled code and find the single instruction (`LEA` or `MOV`) that fits either **Pattern A** or **Pattern B** to locate the `{target_name}` data.
-2. From that instruction, extract the final, absolute address of the `{target_name}` pointer data.
-3. **Return ONLY the final calculated absolute address.** For example: `0x14AD3FE80`.
+2. From that instruction, calculate and extract the final, absolute address of the `{target_name}` pointer data. The address is calculated as `address_of_the_next_instruction + rip_offset`.
+3. **Return ONLY the final calculated absolute address as a single hexadecimal value.** For example: `0x14AD3FE80`.
 4. If you cannot determine the address with high confidence from either pattern, return the single word "None".
 
 ---

@@ -8,5 +8,19 @@ __pycache__/
 *.swp
 *.swo
 
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.user
+bin/
+obj/
+Debug/
+Release/
+x64/
+*.log
+
 # just in case
 ai_assistant.cfg 

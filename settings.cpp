@@ -2,11 +2,101 @@
 
 settings_t g_settings;
 
+const std::vector<std::string> settings_t::gemini_models = {
+  "gemini-2.5-pro",
+  "gemini-2.5-pro-preview-06-05",
+  "gemini-2.0-pro-exp",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-preview-05-20",
+  "gemini-2.5-flash-preview-04-17-thinking",
+  "gemini-2.5-flash-lite-preview-06-17",
+  "gemini-2.0-flash-thinking-exp",
+  "gemini-2.0-flash-thinking-exp-01-21",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-exp",
+  "gemini-1.5-pro-latest",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-flash",
+  "gemini-2.0-flash-lite",
+  "gemma-3-27b-it",
+  "gemma-3-12b-it",
+  "gemma-3-4b-it",
+  "gemma-3-1b-it",
+  "gemma-3n-e4b-it",
+  "gemma-3n-e2b-it",
+};
+
+const std::vector<std::string> settings_t::openai_models = {
+  "o3-pro",
+  "o3",
+  "o3-mini",
+  "o1-pro",
+  "o1",
+  "o4-mini",
+  "gpt-4.5-preview",
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "gpt-4o",
+  "gpt-4-turbo",
+  "gpt-4",
+  "gpt-4o-mini",
+  "gpt-3.5-turbo",
+  "gpt-3.5-turbo-16k",
+};
+
+const std::vector<std::string> settings_t::anthropic_models = {
+  "claude-opus-4-0",
+  "claude-sonnet-4-0",
+  "claude-3.5-sonnet-latest",
+  "claude-3.5-haiku-latest",
+  "claude-3-opus-latest",
+  "claude-3-sonnet-latest",
+  "claude-3-haiku-latest",
+  "claude-2.1",
+  "claude-2",
+  "claude-instant-v1.2",
+};
+
+const std::vector<std::string> settings_t::copilot_models = {
+    "claude-sonnet-4",
+    "claude-3.7-sonnet-thought",
+    "gemini-2.5-pro",
+    "claude-3.7-sonnet",
+    "gpt-4.1-2025-04-14",
+    "gpt-4.1",
+    "o4-mini-2025-04-16",
+    "o4-mini",
+    "o3-mini-2025-01-31",
+    "o3-mini",
+    "o3-mini-paygo",
+    "claude-3.5-sonnet",
+    "gemini-2.0-flash-001",
+    "gpt-4o-2024-11-20",
+    "gpt-4o-2024-08-06",
+    "gpt-4o-2024-05-13",
+    "gpt-4o",
+    "gpt-4o-copilot",
+    "gpt-4-o-preview",
+    "gpt-4-0125-preview",
+    "gpt-4",
+    "gpt-4-0613",
+    "gpt-4o-mini-2024-07-18",
+    "gpt-4o-mini",
+    "gpt-3.5-turbo",
+    "gpt-3.5-turbo-0613",
+    "text-embedding-3-small",
+    "text-embedding-3-small-inference",
+    "text-embedding-ada-002"
+};
+
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(settings_t,
     api_provider,
     gemini_api_key, gemini_model_name,
     openai_api_key, openai_model_name,
     anthropic_api_key, anthropic_model_name,
+    copilot_proxy_address, copilot_model_name,
     xref_context_count, xref_analysis_depth, xref_code_snippet_lines,
     bulk_processing_delay, max_prompt_tokens,
     max_root_func_scan_count, max_root_func_candidates,
@@ -95,9 +185,11 @@ settings_t::settings_t() :
     gemini_api_key(""),
     gemini_model_name("gemini-1.5-flash-latest"),
     openai_api_key(""),
-    openai_model_name("gpt-4-turbo"),
+    openai_model_name("gpt-4o"),
     anthropic_api_key(""),
-    anthropic_model_name("claude-3-sonnet-20240229"),
+    anthropic_model_name("claude-3.5-sonnet-latest"),
+    copilot_proxy_address("http://127.0.0.1:4141"),
+    copilot_model_name("gpt-4o"),
     xref_context_count(5),
     xref_analysis_depth(3),
     xref_code_snippet_lines(30),
@@ -172,11 +264,21 @@ std::string settings_t::get_active_api_key() const
     if (provider == "gemini") return gemini_api_key;
     if (provider == "openai") return openai_api_key;
     if (provider == "anthropic") return anthropic_api_key;
+    if (provider == "copilot") return copilot_proxy_address;
     return "";
 }
 
 void settings_t::prompt_for_api_key()
 {
+    qstring provider = api_provider.c_str();
+    qstrlwr(provider.begin());
+
+    if (provider == "copilot")
+    {
+        warning("AI Assistant: Copilot provider is selected, but the proxy address is not configured. Please set it in the settings dialog.");
+        return;
+    }
+
     qstring provider_name = api_provider.c_str();
     if (!provider_name.empty())
         provider_name[0] = qtoupper(provider_name[0]);
@@ -188,8 +290,6 @@ void settings_t::prompt_for_api_key()
     question.sprnt("Please enter your %s API key to continue:", provider_name.c_str());
     if (ask_str(&key, HIST_SRCH, question.c_str()))
     {
-        qstring provider = api_provider.c_str();
-        qstrlwr(provider.begin());
         if (provider == "gemini") gemini_api_key = key.c_str();
         else if (provider == "openai") openai_api_key = key.c_str();
         else if (provider == "anthropic") anthropic_api_key = key.c_str();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <nlohmann/json.hpp>
 
 class aida_plugin_t;
@@ -19,6 +20,9 @@ public:
     std::string anthropic_api_key;
     std::string anthropic_model_name;
 
+    std::string copilot_proxy_address;
+    std::string copilot_model_name;
+
     int xref_context_count;
     int xref_analysis_depth;
     int xref_code_snippet_lines;
@@ -28,6 +32,11 @@ public:
     int max_root_func_scan_count;
     int max_root_func_candidates;
     double temperature;
+
+    static const std::vector<std::string> gemini_models;
+    static const std::vector<std::string> openai_models;
+    static const std::vector<std::string> anthropic_models;
+    static const std::vector<std::string> copilot_models;
 
     settings_t();
     void save();

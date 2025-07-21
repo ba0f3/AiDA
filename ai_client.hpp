@@ -11,6 +11,7 @@
 #include <ida.hpp>
 #include <kernwin.hpp>
 #include <httplib.h>
+#include "settings.hpp"
 
 class AIClientBase
 {
@@ -82,6 +83,15 @@ class AnthropicClient : public AIClientBase
 {
 public:
     AnthropicClient(const settings_t& settings);
+    bool is_available() const override;
+protected:
+    std::string _blocking_generate(const std::string& prompt_text, double temperature) override;
+};
+
+class CopilotClient : public AIClientBase
+{
+public:
+    CopilotClient(const settings_t& settings);
     bool is_available() const override;
 protected:
     std::string _blocking_generate(const std::string& prompt_text, double temperature) override;

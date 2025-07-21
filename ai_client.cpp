@@ -454,6 +454,47 @@ std::string AnthropicClient::_blocking_generate(const std::string& prompt_text, 
         parser);
 }
 
+CopilotClient::CopilotClient(const settings_t& settings) : AIClientBase(settings)
+{
+    _model_name = _settings.copilot_model_name;
+}
+
+bool CopilotClient::is_available() const
+{
+    return !_settings.copilot_proxy_address.empty();
+}
+
+std::string CopilotClient::_blocking_generate(const std::string& prompt_text, double temperature)
+{
+    if (!is_available())
+        return "Error: Copilot client is not configured. Please set the proxy address in settings.";
+
+    json payload = {
+        {"model", _model_name},
+        {"messages", {
+            {{"role", "system"}, {"content", BASE_PROMPT}},
+            {{"role", "user"}, {"content", prompt_text}}
+        }},
+        {"temperature", temperature}
+    };
+
+    auto parser = [](const json& jres) -> std::string {
+        if (jres.contains("choices") && !jres["choices"].empty())
+        {
+            return jres["choices"][0]["message"]["content"].get<std::string>();
+        }
+        msg("AiDA: Invalid Copilot API response.\nResponse body: %s\n", jres.dump().c_str());
+        return "Error: Received empty or invalid response from API. " + jres.dump();
+    };
+
+    return _http_post_request(
+        _settings.copilot_proxy_address,
+        "/v1/chat/completions",
+        {{"Content-Type", "application/json"}},
+        payload.dump(),
+        parser);
+}
+
 std::unique_ptr<AIClientBase> get_ai_client(const settings_t& settings)
 {
     qstring provider = settings.api_provider.c_str();
@@ -472,6 +513,10 @@ std::unique_ptr<AIClientBase> get_ai_client(const settings_t& settings)
     else if (provider == "anthropic")
     {
         return std::make_unique<AnthropicClient>(settings);
+    }
+    else if (provider == "copilot")
+    {
+        return std::make_unique<CopilotClient>(settings);
     }
     else
     {
