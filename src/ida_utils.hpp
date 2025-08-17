@@ -12,7 +12,8 @@ struct settings_t;
 namespace ida_utils
 {
     std::string markup_text_with_addresses(const std::string& text);
-
+    using get_code_callback_t = std::function<void(const std::pair<std::string, std::string>&)>;
+    void get_function_code(ea_t ea, get_code_callback_t callback, size_t max_len = 0, bool force_assembly = false);
     std::pair<std::string, std::string> get_function_code(ea_t ea, size_t max_len = 0, bool force_assembly = false);
     std::string get_code_xrefs_to(ea_t ea, const settings_t& settings);
     std::string get_code_xrefs_from(ea_t ea, const settings_t& settings);
@@ -21,4 +22,8 @@ namespace ida_utils
     nlohmann::json get_context_for_prompt(ea_t ea, bool include_struct_context = false, size_t max_len = 0);
     void apply_struct_from_cpp(const std::string& cpp_code, ea_t ea);
     std::string format_prompt(const char* prompt_template, const nlohmann::json& context);
+    bool is_word_char(char c);
+    bool ensure_function_context(ea_t ea);
+    qstring qstring_tolower(const qstring& s);
+    bool get_address_from_line_pos(ea_t* out_ea, const char* line, int x);
 }

@@ -15,48 +15,48 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\actions.cpp">
+    <ClCompile Include="..\..\src\actions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ai_client.cpp">
+    <ClCompile Include="..\..\src\aida.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\aida.cpp">
+    <ClCompile Include="..\..\src\ai_client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ida_utils.cpp">
+    <ClCompile Include="..\..\src\ida_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\settings.cpp">
+    <ClCompile Include="..\..\src\settings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ui.cpp">
+    <ClCompile Include="..\..\src\ui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\actions.hpp">
+    <ClInclude Include="..\..\src\actions.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\ai_client.hpp">
+    <ClInclude Include="..\..\src\aida.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\aida.hpp">
+    <ClInclude Include="..\..\src\aida_pro.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\aida_pro.hpp">
+    <ClInclude Include="..\..\src\ai_client.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\ida_utils.hpp">
+    <ClInclude Include="..\..\src\ida_utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\prompts.hpp">
+    <ClInclude Include="..\..\src\prompts.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\settings.hpp">
+    <ClInclude Include="..\..\src\settings.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\ui.hpp">
+    <ClInclude Include="..\..\src\ui.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,48 +1,20 @@
 #include "aida_pro.hpp"
 #include <moves.hpp>
 
-namespace ida_utils
-{
-    static bool get_address_from_line_pos(ea_t* out_ea, const char* line, int x)
-    {
-        if (line == nullptr)
-            return false;
-
-        const char* target_ptr = tag_advance(line, x);
-
-        const char* p_on = nullptr;
-        for (const char* p = target_ptr; p >= line; --p)
-        {
-            if (*p == COLOR_ON && p[1] == COLOR_ADDR)
-            {
-                p_on = p;
-                break;
-            }
-        }
-
-        if (p_on == nullptr)
-            return false;
-
-        const char* p_addr = p_on + 2;
-
-        const char* p_off = strstr(p_addr, SCOLOR_OFF SCOLOR_ADDR);
-        if (p_off == nullptr || target_ptr > p_off)
-            return false;
-
-        qstring addr_str;
-        addr_str.append(p_addr, COLOR_ADDR_SIZE);
-
-        return str2ea(out_ea, addr_str.c_str());
-    }
-}
-
 static bool idaapi handle_viewer_dblclick(TWidget* viewer, int /*shift*/, void* /*ud*/)
 {
     qstring word;
     if (get_highlight(&word, viewer, nullptr))
     {
         ea_t ea = BADADDR;
-        if (str2ea(&ea, word.c_str()))
+        if (atoea(&ea, word.c_str()))
+        {
+            jumpto(ea);
+            return true;
+        }
+
+        ea = get_name_ea(get_screen_ea(), word.c_str());
+        if (ea != BADADDR)
         {
             jumpto(ea);
             return true;
@@ -51,6 +23,7 @@ static bool idaapi handle_viewer_dblclick(TWidget* viewer, int /*shift*/, void* 
 
     return false;
 }
+
 
 // this stupid form almost gave me an aneurysm
 void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
@@ -96,7 +69,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         providers_qstrvec.push_back(p);
 
     qstring provider_setting = g_settings.api_provider.c_str();
-    qstrlwr(provider_setting.begin());
+    provider_setting = ida_utils::qstring_tolower(provider_setting.c_str());
     int provider_idx = 0;
     if (provider_setting == "openai") provider_idx = 1;
     else if (provider_setting == "anthropic") provider_idx = 2;

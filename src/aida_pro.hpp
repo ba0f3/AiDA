@@ -88,11 +88,6 @@
 #include <workarounds.hpp>
 #include <xref.hpp>
 
-// Not repeating myself
-static inline bool is_word_char(char c)
-{
-    return qisalnum(c) || c == '_' || c == ':';
-}
 
 #include "settings.hpp"
 #include "prompts.hpp"

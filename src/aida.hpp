@@ -7,12 +7,12 @@
 #include <idp.hpp>
 #include <loader.hpp>
 
-class AIClientBase;
+class AIClient;
 
 class aida_plugin_t : public plugmod_t
 {
 public:
-    std::unique_ptr<AIClientBase> ai_client;
+    std::unique_ptr<AIClient> ai_client;
     qstrvec_t actions_list;
 
     aida_plugin_t();

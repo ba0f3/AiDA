@@ -87,13 +87,14 @@ Using GitHub Copilot requires an external proxy server that translates Copilot's
 
 **Step 1: Run the Copilot API Proxy**
 You must have the `copilot-api` server running in the background. This server handles authentication with your GitHub account.
-1.  Make sure you have [Bun](https://bun.sh/) installed.
-2.  Open a terminal or command prompt and run the following command:
+ 1.  Make sure you have [Bun](https://bun.sh/) installed.
+ 2.  Install [Node.js](https://nodejs.org/en/download) if you don't already have it. Node.js is required to run the Copilot API proxy.
+ 3.  Open a terminal or command prompt and run the following command:
     ```bash
     npx copilot-api@latest start
     ```
-3.  The first time you run this, it will guide you through a one-time authentication process with GitHub.
-4.  Leave this terminal window open. The proxy server must be running for AiDA to use Copilot.
+ 4.  The first time you run this, it will guide you through a one-time authentication process with GitHub.
+ 5.  Leave this terminal window open. The proxy server must be running for AiDA to use Copilot.
 
 **Step 2: Configure AiDA**
 1.  In IDA, open the AiDA settings (`AI Assistant > Settings...`).
@@ -113,8 +114,8 @@ You must have the `copilot-api` server running in the background. This server ha
 
 ### Analysis Parameters
 *   **Max Prompt Tokens:** This is a critical setting for managing cost and quality. It limits the total amount of context (your function's code, cross-references, etc.) sent to the AI.
-    *   **Higher Value (e.g., 30,000):** Provides the AI with more context, leading to more accurate and detailed analysis. This is more expensive and slightly slower.
-    *   **Lower Value (e.g., 8,000):** Cheaper and faster, but the AI may miss important details due to the limited context.
+    *   **Higher Value (e.g., 1,048,576):** Provides the AI with more context, leading to more accurate and detailed analysis. This is more expensive and slightly slower.
+    *   **Lower Value (e.g., 32,000):** Cheaper and faster, but the AI may miss important details due to the limited context.
 
 *   **XRef Context Count:** The maximum number of calling functions (callers) and called functions (callees) to include in the prompt. Increasing this gives the AI a better understanding of the function's role.
 

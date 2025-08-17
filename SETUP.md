@@ -12,12 +12,18 @@ Set this to point to your IDA SDK installation directory.
 IDASDK=C:\path\to\your\idasdk91\idasdk91
 ```
 
-**How to set:**
-1. Right-click "This PC" → Properties → Advanced System Settings
+**Setting up the IDASDK enviroment variable:**
+1. Right-click "This PC" → Properties → Advanced System Settings 
 2. Click "Environment Variables"
 3. Under "User variables" or "System variables", click "New"
 4. Variable name: `IDASDK`
-5. Variable value: Your IDA SDK path (without trailing slash)
+5. Variable value: Your IDA SDK path
+
+**After setting the IDASDK environment variable:**
+1. Open your project in Visual Studio.
+2. Go to Project Properties → Linker → General → Additional Library Directories.
+3. Find where `ida.lib` is located in your SDK (usually `idasdk91\lib\x64_win_vc_64`).
+4. Add the path to the Additional Library Directories field.
 
 ## Alternative Setup
 If you prefer not to use environment variables, you can directly edit the paths in `AiDA\AiDA\AiDA.vcxproj` by replacing `$(IDASDK)` with your actual IDA SDK path.

@@ -3,28 +3,28 @@
 settings_t g_settings;
 
 const std::vector<std::string> settings_t::gemini_models = {
-  "gemini-2.5-pro",
-  "gemini-2.5-pro-preview-06-05",
-  "gemini-2.0-pro-exp",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-preview-05-20",
-  "gemini-2.5-flash-preview-04-17-thinking",
-  "gemini-2.5-flash-lite-preview-06-17",
-  "gemini-2.0-flash-thinking-exp",
-  "gemini-2.0-flash-thinking-exp-01-21",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-exp",
-  "gemini-1.5-pro-latest",
-  "gemini-1.5-pro",
-  "gemini-1.5-flash-latest",
-  "gemini-1.5-flash",
-  "gemini-2.0-flash-lite",
-  "gemma-3-27b-it",
-  "gemma-3-12b-it",
-  "gemma-3-4b-it",
-  "gemma-3-1b-it",
-  "gemma-3n-e4b-it",
-  "gemma-3n-e2b-it",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-pro-latest",
+    "gemini-1.5-pro",
+    "gemini-1.5-pro-002",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-flash-8b-latest",
+    "gemini-2.0-flash-exp",
+    "gemini-2.0-flash-lite-preview",
+    "gemini-2.0-pro-exp",
+    "gemini-2.0-flash-thinking-exp",
+    "gemma-3-1b-it",
+    "gemma-3-4b-it",
+    "gemma-3-12b-it",
+    "gemma-3-27b-it",
+    "gemma-3n-e4b-it",
+    "gemma-3n-e2b-it"
 };
 
 const std::vector<std::string> settings_t::openai_models = {
@@ -86,9 +86,6 @@ const std::vector<std::string> settings_t::copilot_models = {
     "gpt-4o-mini",
     "gpt-3.5-turbo",
     "gpt-3.5-turbo-0613",
-    "text-embedding-3-small",
-    "text-embedding-3-small-inference",
-    "text-embedding-ada-002"
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(settings_t,
@@ -183,7 +180,7 @@ static bool load_settings_from_file(settings_t* settings, const qstring& path)
 settings_t::settings_t() :
     api_provider(""),
     gemini_api_key(""),
-    gemini_model_name("gemini-1.5-flash-latest"),
+    gemini_model_name("gemini-2.0-flash"),
     openai_api_key(""),
     openai_model_name("gpt-4o"),
     anthropic_api_key(""),
@@ -194,7 +191,7 @@ settings_t::settings_t() :
     xref_analysis_depth(3),
     xref_code_snippet_lines(30),
     bulk_processing_delay(1.5),
-    max_prompt_tokens(30000),
+    max_prompt_tokens(1048576),
     max_root_func_scan_count(40),
     max_root_func_candidates(40),
     temperature(0.1)
@@ -259,8 +256,7 @@ bool settings_t::load_from_file()
 
 std::string settings_t::get_active_api_key() const
 {
-    qstring provider = api_provider.c_str();
-    qstrlwr(provider.begin());
+    qstring provider = ida_utils::qstring_tolower(api_provider.c_str());
     if (provider == "gemini") return gemini_api_key;
     if (provider == "openai") return openai_api_key;
     if (provider == "anthropic") return anthropic_api_key;
@@ -270,8 +266,7 @@ std::string settings_t::get_active_api_key() const
 
 void settings_t::prompt_for_api_key()
 {
-    qstring provider = api_provider.c_str();
-    qstrlwr(provider.begin());
+    qstring provider = ida_utils::qstring_tolower(api_provider.c_str());
 
     if (provider == "copilot")
     {
