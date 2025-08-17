@@ -90,9 +90,9 @@ You must have the `copilot-api` server running in the background. This server ha
  1.  Make sure you have [Bun](https://bun.sh/) installed.
  2.  Install [Node.js](https://nodejs.org/en/download) if you don't already have it. Node.js is required to run the Copilot API proxy.
  3.  Open a terminal or command prompt and run the following command:
-    ```bash
-    npx copilot-api@latest start
-    ```
+     ```bash
+     npx copilot-api@latest start
+     ```
  4.  The first time you run this, it will guide you through a one-time authentication process with GitHub.
  5.  Leave this terminal window open. The proxy server must be running for AiDA to use Copilot.
 
