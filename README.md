@@ -69,9 +69,7 @@ Ensure you have **Python 3.11** or higher installed on your system.
     ```
 
 2.  Run the installation command to automatically copy the plugin to your IDA Pro plugins directory:
-    ```bash
-    aida --install
-    ```
+    `aida --install`
 
 3.  Open IDA Pro, go to **Edit → Plugins**, and click **AiDA-MCP** to activate the Model Context Protocol support.
 
