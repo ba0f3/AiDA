@@ -396,14 +396,60 @@ json GeminiClient::_get_api_payload(const std::string& prompt_text, double tempe
         {"generationConfig", {{"temperature", temperature}}}
     };
 }
+
 std::string GeminiClient::_parse_api_response(const json& jres) const
 {
-    if (jres.contains("candidates") && !jres["candidates"].empty())
+    if (jres.contains("error"))
     {
-        return jres["candidates"][0]["content"]["parts"][0]["text"].get<std::string>();
+        std::string error_msg = "Gemini API Error: ";
+        if (jres["error"].is_object() && jres["error"].contains("message"))
+        {
+            error_msg += jres["error"]["message"].get<std::string>();
+        }
+        else
+        {
+            error_msg += jres.dump(2);
+        }
+        msg("AiDA: %s\n", error_msg.c_str());
+        return "Error: " + error_msg;
     }
-    msg("AiDA: Invalid Gemini API response.\nResponse body: %s\n", jres.dump().c_str());
-    return "Error: Received empty or invalid response from API. " + jres.dump();
+
+    const auto candidates = jres.value("candidates", json::array());
+    if (candidates.empty() || !candidates[0].is_object())
+    {
+        if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
+            std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
+            msg("AiDA: Gemini API blocked the prompt. Reason: %s\n", reason.c_str());
+            return "Error: Prompt was blocked by API for reason: " + reason;
+        }
+        msg("AiDA: Invalid Gemini API response: 'candidates' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'candidates' array from API.";
+    }
+
+    const auto& first_candidate = candidates[0];
+    std::string finish_reason = first_candidate.value("finishReason", "UNKNOWN");
+
+    if (finish_reason != "STOP")
+    {
+        msg("AiDA: Gemini API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
+        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+    }
+
+    const auto content = first_candidate.value("content", json::object());
+    if (!content.is_object())
+    {
+        msg("AiDA: Invalid Gemini API response: 'content' object is missing or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'content' object from API.";
+    }
+
+    const auto parts = content.value("parts", json::array());
+    if (parts.empty() || !parts[0].is_object())
+    {
+        msg("AiDA: Invalid Gemini API response: 'parts' array is missing, empty, or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'parts' array from API.";
+    }
+
+    return parts[0].value("text", "Error: 'text' field not found in API response.");
 }
 
 OpenAIClient::OpenAIClient(const settings_t& settings) : AIClient(settings)
@@ -436,14 +482,53 @@ json OpenAIClient::_get_api_payload(const std::string& prompt_text, double tempe
         {"temperature", temperature}
     };
 }
+
 std::string OpenAIClient::_parse_api_response(const json& jres) const
 {
-    if (jres.contains("choices") && !jres["choices"].empty())
+    if (jres.contains("error"))
     {
-        return jres["choices"][0]["message"]["content"].get<std::string>();
+        std::string error_msg = "OpenAI API Error: ";
+        if (jres["error"].is_object() && jres["error"].contains("message"))
+        {
+            error_msg += jres["error"]["message"].get<std::string>();
+        }
+        else
+        {
+            error_msg += jres.dump(2);
+        }
+        msg("AiDA: %s\n", error_msg.c_str());
+        return "Error: " + error_msg;
     }
-    msg("AiDA: Invalid OpenAI API response.\nResponse body: %s\n", jres.dump().c_str());
-    return "Error: Received empty or invalid response from API. " + jres.dump();
+
+    const auto choices = jres.value("choices", json::array());
+    if (choices.empty() || !choices[0].is_object())
+    {
+        if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
+            std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
+            msg("AiDA: OpenAI API blocked the prompt. Reason: %s\n", reason.c_str());
+            return "Error: Prompt was blocked by API for reason: " + reason;
+        }
+        msg("AiDA: Invalid OpenAI API response: 'choices' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'choices' array from API.";
+    }
+
+    const auto& first_choice = choices[0];
+    std::string finish_reason = first_choice.value("finish_reason", "UNKNOWN");
+
+    if (finish_reason != "stop" && finish_reason != "STOP")
+    {
+        msg("AiDA: OpenAI API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
+        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+    }
+
+    const auto message = first_choice.value("message", json::object());
+    if (!message.is_object())
+    {
+        msg("AiDA: Invalid OpenAI API response: 'message' object is missing or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'message' object from API.";
+    }
+
+    return message.value("content", "Error: 'content' field not found in API response.");
 }
 
 OpenRouterClient::OpenRouterClient(const settings_t& settings) : OpenAIClient(settings)
@@ -500,14 +585,46 @@ json AnthropicClient::_get_api_payload(const std::string& prompt_text, double te
         {"temperature", temperature}
     };
 }
+
 std::string AnthropicClient::_parse_api_response(const json& jres) const
 {
-    if (jres.contains("content") && !jres["content"].empty())
+    if (jres.contains("error"))
     {
-        return jres["content"][0]["text"].get<std::string>();
+        std::string error_msg = "Anthropic API Error: ";
+        if (jres["error"].is_object() && jres["error"].contains("message"))
+        {
+            error_msg += jres["error"]["message"].get<std::string>();
+        }
+        else
+        {
+            error_msg += jres.dump(2);
+        }
+        msg("AiDA: %s\n", error_msg.c_str());
+        return "Error: " + error_msg;
     }
-    msg("AiDA: Invalid Anthropic API response.\nResponse body: %s\n", jres.dump().c_str());
-    return "Error: Received empty or invalid response from API. " + jres.dump();
+
+    const auto content = jres.value("content", json::array());
+    if (content.empty() || !content[0].is_object())
+    {
+        if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
+            std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
+            msg("AiDA: Anthropic API blocked the prompt. Reason: %s\n", reason.c_str());
+            return "Error: Prompt was blocked by API for reason: " + reason;
+        }
+        msg("AiDA: Invalid Anthropic API response: 'content' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'content' array from API.";
+    }
+
+    const auto& first_content = content[0];
+    std::string finish_reason = first_content.value("finish_reason", "UNKNOWN");
+
+    if (finish_reason != "stop" && finish_reason != "STOP")
+    {
+        msg("AiDA: Anthropic API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
+        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+    }
+
+    return first_content.value("text", "Error: 'text' field not found in API response.");
 }
 
 CopilotClient::CopilotClient(const settings_t& settings) : AIClient(settings)
@@ -536,12 +653,50 @@ json CopilotClient::_get_api_payload(const std::string& prompt_text, double temp
 }
 std::string CopilotClient::_parse_api_response(const json& jres) const
 {
-    if (jres.contains("choices") && !jres["choices"].empty())
+    if (jres.contains("error"))
     {
-        return jres["choices"][0]["message"]["content"].get<std::string>();
+        std::string error_msg = "Copilot API Error: ";
+        if (jres["error"].is_object() && jres["error"].contains("message"))
+        {
+            error_msg += jres["error"]["message"].get<std::string>();
+        }
+        else
+        {
+            error_msg += jres.dump(2);
+        }
+        msg("AiDA: %s\n", error_msg.c_str());
+        return "Error: " + error_msg;
     }
-    msg("AiDA: Invalid Copilot API response.\nResponse body: %s\n", jres.dump().c_str());
-    return "Error: Received empty or invalid response from API. " + jres.dump();
+
+    const auto choices = jres.value("choices", json::array());
+    if (choices.empty() || !choices[0].is_object())
+    {
+        if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
+            std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
+            msg("AiDA: Copilot API blocked the prompt. Reason: %s\n", reason.c_str());
+            return "Error: Prompt was blocked by API for reason: " + reason;
+        }
+        msg("AiDA: Invalid Copilot API response: 'choices' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'choices' array from API.";
+    }
+
+    const auto& first_choice = choices[0];
+    std::string finish_reason = first_choice.value("finish_reason", "UNKNOWN");
+
+    if (finish_reason != "stop" && finish_reason != "STOP")
+    {
+        msg("AiDA: Copilot API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
+        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+    }
+
+    const auto message = first_choice.value("message", json::object());
+    if (!message.is_object())
+    {
+        msg("AiDA: Invalid Copilot API response: 'message' object is missing or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
+        return "Error: Received invalid 'message' object from API.";
+    }
+
+    return message.value("content", "Error: 'content' field not found in API response.");
 }
 
 std::unique_ptr<AIClient> get_ai_client(const settings_t& settings)
