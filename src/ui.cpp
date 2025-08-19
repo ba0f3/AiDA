@@ -246,9 +246,6 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         g_settings.xref_code_snippet_lines = static_cast<int>(snippet_lines);
         g_settings.max_prompt_tokens = static_cast<int>(max_tokens);
 
-        // Diagnostic: show OpenRouter API key length (not the key itself)
-        msg("AiDA: OpenRouter API key length: %d\n", (int)g_settings.openrouter_api_key.size());
-
         try { g_settings.bulk_processing_delay = std::stod(bulk_delay_str.c_str()); }
         catch (...) { warning("AI Assistant: Invalid value for bulk processing delay."); }
 
