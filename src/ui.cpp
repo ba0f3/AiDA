@@ -25,6 +25,73 @@ static bool idaapi handle_viewer_dblclick(TWidget* viewer, int /*shift*/, void* 
 }
 
 
+
+
+// Helper: fetch OpenRouter models dynamically via API (fallback handled by caller)
+static std::vector<std::string> fetch_openrouter_models_via_api(const qstring& api_key)
+{
+    std::vector<std::string> models;
+    if (api_key.empty())
+        return models;
+
+    try
+    {
+        httplib::Client cli("https://openrouter.ai");
+        std::string auth = api_key.c_str();
+        if (auth.find("Bearer ") != 0) {
+            auth = "Bearer " + auth;
+        }
+        cli.set_default_headers({
+            {"Authorization", auth},
+        });
+        cli.set_read_timeout(20);
+        cli.set_connection_timeout(10);
+
+        auto res = cli.Get("/api/v1/models");
+        if (!res || res->status != 200)
+        {
+            if (res)
+                msg("AiDA: Failed to fetch OpenRouter models. HTTP %d.\n", res->status);
+            else
+                msg("AiDA: Failed to fetch OpenRouter models. HTTP request error.\n");
+            return models;
+        }
+
+        auto j = nlohmann::json::parse(res->body);
+        if (!j.contains("data") || !j["data"].is_array())
+            return models;
+
+        auto is_probably_chat_model = [](const std::string& id) -> bool {
+            // Conservative exclude list for non-chat models
+            static const char* const excludes[] = {
+                "embedding", "embeddings", "whisper", "audio", "tts", "dall-e", "image", "vision-preview", "stable-diffusion", "sd-"
+            };
+            for (const auto& ex : excludes)
+            {
+                if (id.find(ex) != std::string::npos)
+                    return false;
+            }
+            return true; // default include
+        };
+
+        for (const auto& m : j["data"])
+        {
+            if (!m.contains("id")) continue;
+            std::string id = m["id"].get<std::string>();
+            if (is_probably_chat_model(id))
+                models.push_back(std::move(id));
+        }
+
+        std::sort(models.begin(), models.end());
+        models.erase(std::unique(models.begin(), models.end()), models.end());
+    }
+    catch (const std::exception& e)
+    {
+        warning("AI Assistant: Exception while fetching OpenRouter models: %s", e.what());
+    }
+    return models;
+}
+
 // this stupid form almost gave me an aneurysm
 void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
 {
@@ -53,6 +120,11 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         "<Model Name:b22:0:40::>\n"
         "<=:OpenAI>100>\n"
 
+        // --- OpenRouter ---
+        "<API Key:q25:80:80::>\n"
+        "<Model Name:b26:0:40::>\n"
+        "<=:OpenRouter>100>\n"
+
         // --- Anthropic Tab ---
         "<API Key:q31:64:64::>\n"
         "<Model Name:b32:0:40::>\n"
@@ -63,7 +135,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         "<Model Name:b42:0:40::>\n"
         "<=:Copilot>100>\n";
 
-    static const char* const providers_list_items[] = { "Gemini", "OpenAI", "Anthropic", "Copilot" };
+    static const char* const providers_list_items[] = { "Gemini", "OpenAI", "OpenRouter", "Anthropic", "Copilot" };
     qstrvec_t providers_qstrvec;
     for (const auto& p : providers_list_items)
         providers_qstrvec.push_back(p);
@@ -72,8 +144,9 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     provider_setting = ida_utils::qstring_tolower(provider_setting.c_str());
     int provider_idx = 0;
     if (provider_setting == "openai") provider_idx = 1;
-    else if (provider_setting == "anthropic") provider_idx = 2;
-    else if (provider_setting == "copilot") provider_idx = 3;
+    else if (provider_setting == "openrouter") provider_idx = 2;
+    else if (provider_setting == "anthropic") provider_idx = 3;
+    else if (provider_setting == "copilot") provider_idx = 4;
 
     auto find_model_index = [](const std::vector<std::string>& models, const std::string& name) -> int {
         auto it = std::find(models.begin(), models.end(), name);
@@ -87,9 +160,19 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     for (const auto& m : settings_t::gemini_models) gemini_models_qsv.push_back(m.c_str());
     int gemini_model_idx = find_model_index(settings_t::gemini_models, g_settings.gemini_model_name);
 
+    // Build OpenAI models list from static defaults (dynamic fetching disabled)
+    std::vector<std::string> openai_models_vec = settings_t::openai_models;
     qstrvec_t openai_models_qsv;
-    for (const auto& m : settings_t::openai_models) openai_models_qsv.push_back(m.c_str());
-    int openai_model_idx = find_model_index(settings_t::openai_models, g_settings.openai_model_name);
+    for (const auto& m : openai_models_vec) openai_models_qsv.push_back(m.c_str());
+    int openai_model_idx = find_model_index(openai_models_vec, g_settings.openai_model_name);
+
+    // Build OpenRouter models list dynamically via API (fallback to static list)
+    std::vector<std::string> openrouter_models_vec = fetch_openrouter_models_via_api(g_settings.openrouter_api_key.c_str());
+    if (openrouter_models_vec.empty())
+        openrouter_models_vec = settings_t::openrouter_models;
+    qstrvec_t openrouter_models_qsv;
+    for (const auto& m : openrouter_models_vec) openrouter_models_qsv.push_back(m.c_str());
+    int openrouter_model_idx = find_model_index(openrouter_models_vec, g_settings.openrouter_model_name);
 
     qstrvec_t anthropic_models_qsv;
     for (const auto& m : settings_t::anthropic_models) anthropic_models_qsv.push_back(m.c_str());
@@ -101,6 +184,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
 
     qstring gemini_key = g_settings.gemini_api_key.c_str();
     qstring openai_key = g_settings.openai_api_key.c_str();
+    qstring openrouter_key = g_settings.openrouter_api_key.c_str();
     qstring anthropic_key = g_settings.anthropic_api_key.c_str();
     qstring copilot_proxy_addr = g_settings.copilot_proxy_address.c_str();
     qstring bulk_delay_str;
@@ -124,6 +208,8 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         &gemini_key, &gemini_models_qsv, &gemini_model_idx,
         // openai tab (3 args)
         &openai_key, &openai_models_qsv, &openai_model_idx,
+        // openrouter tab (3 args)
+        &openrouter_key, &openrouter_models_qsv, &openrouter_model_idx,
         // anthropic tab (3 args)
         &anthropic_key, &anthropic_models_qsv, &anthropic_model_idx,
         // copilot tab (3 args)
@@ -134,13 +220,18 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     {
         g_settings.api_provider = providers_list_items[provider_idx];
 
+
         g_settings.gemini_api_key = gemini_key.c_str();
         if (gemini_model_idx < settings_t::gemini_models.size())
             g_settings.gemini_model_name = settings_t::gemini_models[gemini_model_idx];
 
         g_settings.openai_api_key = openai_key.c_str();
-        if (openai_model_idx < settings_t::openai_models.size())
-            g_settings.openai_model_name = settings_t::openai_models[openai_model_idx];
+        if (openai_model_idx < openai_models_vec.size())
+            g_settings.openai_model_name = openai_models_vec[openai_model_idx];
+
+        g_settings.openrouter_api_key = openrouter_key.c_str();
+        if (openrouter_model_idx < openrouter_models_vec.size())
+            g_settings.openrouter_model_name = openrouter_models_vec[openrouter_model_idx];
 
         g_settings.anthropic_api_key = anthropic_key.c_str();
         if (anthropic_model_idx < settings_t::anthropic_models.size())

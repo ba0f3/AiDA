@@ -49,6 +49,15 @@ const std::vector<std::string> settings_t::openai_models = {
   "gpt-3.5-turbo-16k",
 };
 
+const std::vector<std::string> settings_t::openrouter_models = {
+  // Common OpenRouter model IDs (uses OpenAI-compatible Messages API)
+  "moonshotai/kimi-k2:free",
+  "openai/gpt-oss-20b:free",
+  "z-ai/glm-4.5-air:free",
+  "tngtech/deepseek-r1t2-chimera:free",
+  
+};
+
 const std::vector<std::string> settings_t::anthropic_models = {
   "claude-opus-4-0",
   "claude-sonnet-4-0",
@@ -91,17 +100,70 @@ const std::vector<std::string> settings_t::copilot_models = {
     "gpt-3.5-turbo-0613",
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(settings_t,
-    api_provider,
-    gemini_api_key, gemini_model_name,
-    openai_api_key, openai_model_name,
-    anthropic_api_key, anthropic_model_name,
-    copilot_proxy_address, copilot_model_name,
-    xref_context_count, xref_analysis_depth, xref_code_snippet_lines,
-    bulk_processing_delay, max_prompt_tokens,
-    max_root_func_scan_count, max_root_func_candidates,
-    temperature
-)
+// Replaced macro-based (strict) JSON mapping with tolerant serializers that keep defaults
+// when keys are missing, to preserve backward compatibility with older config files.
+static void to_json(nlohmann::json& j, const settings_t& s)
+{
+    j = nlohmann::json{
+        {"api_provider", s.api_provider},
+        {"gemini_api_key", s.gemini_api_key},
+        {"gemini_model_name", s.gemini_model_name},
+        {"openai_api_key", s.openai_api_key},
+        {"openai_model_name", s.openai_model_name},
+        {"openrouter_api_key", s.openrouter_api_key},
+        {"openrouter_model_name", s.openrouter_model_name},
+        {"anthropic_api_key", s.anthropic_api_key},
+        {"anthropic_model_name", s.anthropic_model_name},
+        {"copilot_proxy_address", s.copilot_proxy_address},
+        {"copilot_model_name", s.copilot_model_name},
+        {"xref_context_count", s.xref_context_count},
+        {"xref_analysis_depth", s.xref_analysis_depth},
+        {"xref_code_snippet_lines", s.xref_code_snippet_lines},
+        {"bulk_processing_delay", s.bulk_processing_delay},
+        {"max_prompt_tokens", s.max_prompt_tokens},
+        {"max_root_func_scan_count", s.max_root_func_scan_count},
+        {"max_root_func_candidates", s.max_root_func_candidates},
+        {"temperature", s.temperature}
+    };
+}
+
+static void from_json(const nlohmann::json& j, settings_t& s)
+{
+    // Use default-constructed settings as source of defaults for missing keys
+    settings_t d;
+    s.api_provider = j.value("api_provider", d.api_provider);
+
+    std::string gemini_key = j.value("gemini_api_key", d.gemini_api_key);
+    s.gemini_api_key = gemini_key;
+    s.gemini_model_name = j.value("gemini_model_name", d.gemini_model_name);
+
+    std::string openai_key = j.value("openai_api_key", d.openai_api_key);
+    s.openai_api_key = openai_key;
+    s.openai_model_name = j.value("openai_model_name", d.openai_model_name);
+
+    std::string openrouter_key = j.value("openrouter_api_key", d.openrouter_api_key);
+    s.openrouter_api_key = openrouter_key;
+    s.openrouter_model_name = j.value("openrouter_model_name", d.openrouter_model_name);
+
+    std::string anthropic_key = j.value("anthropic_api_key", d.anthropic_api_key);
+    s.anthropic_api_key = anthropic_key;
+    s.anthropic_model_name = j.value("anthropic_model_name", d.anthropic_model_name);
+
+    s.copilot_proxy_address = j.value("copilot_proxy_address", d.copilot_proxy_address);
+    s.copilot_model_name = j.value("copilot_model_name", d.copilot_model_name);
+
+    s.xref_context_count = j.value("xref_context_count", d.xref_context_count);
+    s.xref_analysis_depth = j.value("xref_analysis_depth", d.xref_analysis_depth);
+    s.xref_code_snippet_lines = j.value("xref_code_snippet_lines", d.xref_code_snippet_lines);
+
+    s.bulk_processing_delay = j.value("bulk_processing_delay", d.bulk_processing_delay);
+    s.max_prompt_tokens = j.value("max_prompt_tokens", d.max_prompt_tokens);
+
+    s.max_root_func_scan_count = j.value("max_root_func_scan_count", d.max_root_func_scan_count);
+    s.max_root_func_candidates = j.value("max_root_func_candidates", d.max_root_func_candidates);
+
+    s.temperature = j.value("temperature", d.temperature);
+}
 
 static qstring get_config_file()
 {
@@ -143,7 +205,7 @@ static bool save_settings_to_file(const settings_t& settings, const qstring& pat
     }
 }
 
-static bool load_settings_from_file(settings_t* settings, const qstring& path)
+static bool load_settings_from_file(settings_t& settings, const qstring& path)
 {
     if (!qfileexist(path.c_str()))
         return false;
@@ -169,7 +231,28 @@ static bool load_settings_from_file(settings_t* settings, const qstring& path)
     try
     {
         nlohmann::json j = nlohmann::json::parse(json_data.c_str());
-        *settings = j.get<settings_t>();
+
+        // Detect if any keys are missing to backfill them and rewrite the file
+        bool missing = false;
+        auto req = [&](const char* key){ if (!j.contains(key)) missing = true; };
+        req("api_provider");
+        req("gemini_api_key"); req("gemini_model_name");
+        req("openai_api_key"); req("openai_model_name");
+        req("openrouter_api_key"); req("openrouter_model_name");
+        req("anthropic_api_key"); req("anthropic_model_name");
+        req("copilot_proxy_address"); req("copilot_model_name");
+        req("xref_context_count"); req("xref_analysis_depth"); req("xref_code_snippet_lines");
+        req("bulk_processing_delay"); req("max_prompt_tokens");
+        req("max_root_func_scan_count"); req("max_root_func_candidates");
+        req("temperature");
+
+        settings = j.get<settings_t>();
+
+        if (missing)
+        {
+            // Write back merged settings so the file contains all required keys
+            save_settings_to_file(settings, path);
+        }
         return true;
     }
     catch (const std::exception& e)
@@ -186,10 +269,12 @@ settings_t::settings_t() :
     gemini_model_name("gemini-2.0-flash"),
     openai_api_key(""),
     openai_model_name("gpt-5"),
+    openrouter_api_key(""),
+    openrouter_model_name("moonshotai/kimi-k2:free"),
     anthropic_api_key(""),
     anthropic_model_name("claude-3.5-sonnet-latest"),
     copilot_proxy_address("http://127.0.0.1:4141"),
-    copilot_model_name("gpt-4o"),
+    copilot_model_name("gpt-4.1"),
     xref_context_count(5),
     xref_analysis_depth(3),
     xref_code_snippet_lines(30),
@@ -219,6 +304,11 @@ void settings_t::load(aida_plugin_t* plugin_instance)
     if (openai_api_key.empty() && qgetenv("OPENAI_API_KEY", &val))
     {
         openai_api_key = val.c_str();
+        has_env_keys = true;
+    }
+    if (openrouter_api_key.empty() && qgetenv("OPENROUTER_API_KEY", &val))
+    {
+        openrouter_api_key = val.c_str();
         has_env_keys = true;
     }
     if (anthropic_api_key.empty() && qgetenv("ANTHROPIC_API_KEY", &val))
@@ -254,7 +344,7 @@ void settings_t::load(aida_plugin_t* plugin_instance)
 
 bool settings_t::load_from_file()
 {
-    return load_settings_from_file(this, get_config_file());
+    return load_settings_from_file(*this, get_config_file());
 }
 
 std::string settings_t::get_active_api_key() const
@@ -262,6 +352,7 @@ std::string settings_t::get_active_api_key() const
     qstring provider = ida_utils::qstring_tolower(api_provider.c_str());
     if (provider == "gemini") return gemini_api_key;
     if (provider == "openai") return openai_api_key;
+    if (provider == "openrouter") return openrouter_api_key;
     if (provider == "anthropic") return anthropic_api_key;
     if (provider == "copilot") return copilot_proxy_address;
     return "";
@@ -290,6 +381,7 @@ void settings_t::prompt_for_api_key()
     {
         if (provider == "gemini") gemini_api_key = key.c_str();
         else if (provider == "openai") openai_api_key = key.c_str();
+        else if (provider == "openrouter") openrouter_api_key = key.c_str();
         else if (provider == "anthropic") anthropic_api_key = key.c_str();
         save();
     }

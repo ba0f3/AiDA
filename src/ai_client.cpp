@@ -446,6 +446,30 @@ std::string OpenAIClient::_parse_api_response(const json& jres) const
     return "Error: Received empty or invalid response from API. " + jres.dump();
 }
 
+OpenRouterClient::OpenRouterClient(const settings_t& settings) : OpenAIClient(settings)
+{
+    _model_name = _settings.openrouter_model_name;
+}
+
+bool OpenRouterClient::is_available() const
+{
+    return !_settings.openrouter_api_key.empty();
+}
+
+std::string OpenRouterClient::_get_api_host() const { return "https://openrouter.ai"; }
+std::string OpenRouterClient::_get_api_path(const std::string&) const { return "/api/v1/chat/completions"; }
+httplib::Headers OpenRouterClient::_get_api_headers() const
+{
+    std::string auth = _settings.openrouter_api_key;
+    if (auth.find("Bearer ") != 0) {
+        auth = "Bearer " + auth;
+    }
+    return {
+        {"Authorization", auth},
+        {"Content-Type", "application/json"}
+    };
+}
+
 AnthropicClient::AnthropicClient(const settings_t& settings) : AIClient(settings)
 {
     _model_name = _settings.anthropic_model_name;
@@ -533,6 +557,10 @@ std::unique_ptr<AIClient> get_ai_client(const settings_t& settings)
     else if (provider == "openai")
     {
         return std::make_unique<OpenAIClient>(settings);
+    }
+    else if (provider == "openrouter")
+    {
+        return std::make_unique<OpenRouterClient>(settings);
     }
     else if (provider == "anthropic")
     {
