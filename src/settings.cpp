@@ -28,6 +28,9 @@ const std::vector<std::string> settings_t::gemini_models = {
 };
 
 const std::vector<std::string> settings_t::openai_models = {
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
   "o3-pro",
   "o3",
   "o3-mini",
@@ -182,7 +185,7 @@ settings_t::settings_t() :
     gemini_api_key(""),
     gemini_model_name("gemini-2.0-flash"),
     openai_api_key(""),
-    openai_model_name("gpt-4o"),
+    openai_model_name("gpt-5"),
     anthropic_api_key(""),
     anthropic_model_name("claude-3.5-sonnet-latest"),
     copilot_proxy_address("http://127.0.0.1:4141"),
