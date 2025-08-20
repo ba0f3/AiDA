@@ -26,6 +26,7 @@ public:
     virtual void analyze_function(ea_t ea, callback_t callback) = 0;
     virtual void suggest_name(ea_t ea, callback_t callback) = 0;
     virtual void generate_struct(ea_t ea, callback_t callback) = 0;
+    virtual void generate_comment(ea_t ea, callback_t callback) = 0;
     virtual void generate_hook(ea_t ea, callback_t callback) = 0;
     virtual void custom_query(ea_t ea, const std::string& question, callback_t callback) = 0;
     virtual void locate_global_pointer(ea_t ea, const std::string& target_name, addr_callback_t callback) = 0;
@@ -40,6 +41,7 @@ public:
     void analyze_function(ea_t ea, callback_t callback) override;
     void suggest_name(ea_t ea, callback_t callback) override;
     void generate_struct(ea_t ea, callback_t callback) override;
+    void generate_comment(ea_t ea, callback_t callback) override;
     void generate_hook(ea_t ea, callback_t callback) override;
     void custom_query(ea_t ea, const std::string& question, callback_t callback) override;
     void locate_global_pointer(ea_t ea, const std::string& target_name, addr_callback_t callback) override;

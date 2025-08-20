@@ -98,12 +98,11 @@ void handle_rename_function(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 void handle_auto_comment(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
     const ea_t func_ea = ctx->cur_ea;
-    func_t* pfn = get_func(func_ea);
     if (!ida_utils::ensure_function_context(func_ea))
         return;
 
-    auto on_complete = [func_ea](const std::string& analysis) {
-        action_helpers::handle_ai_response(analysis, "AI Comment",
+    auto on_complete = [func_ea](const std::string& comment_text) {
+        action_helpers::handle_ai_response(comment_text, "AI Comment",
             [func_ea](const std::string& content) {
                 func_t* pfn_cb = get_func(func_ea);
                 if (!pfn_cb)
@@ -112,46 +111,60 @@ void handle_auto_comment(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
                     return;
                 }
 
-                std::smatch match;
-                std::string summary;
-                if (std::regex_search(content, match, std::regex("High-Level Purpose:\\s*(.*)")))
+                qstring summary = content.c_str();
+                summary.replace("\n", " ");
+                summary.replace("\r", " ");
+                summary.replace("`", "");
+                summary.replace("'", "");
+                summary.replace("\"", "");
+                summary.trim2();
+
+                if (summary.length() > 82)
                 {
-                    summary = match[1].str();
+                    summary.resize(82);
+                    msg("AiDA: Truncated long AI comment to 82 characters.\n");
+                }
+
+                if (summary.empty())
+                {
+                    warning("AiDA: AI returned an empty comment.");
+                    return;
+                }
+
+                qstring existing_comment;
+                get_func_cmt(&existing_comment, pfn_cb, true);
+
+                if (existing_comment.find("// AI Assist:") != qstring::npos)
+                {
+                    msg("AiDA: AI-generated comment already exists. Skipping.\n");
+                    return;
+                }
+
+                qstring new_comment;
+                qstring ai_comment_line;
+                ai_comment_line.sprnt("// AI Assist: %s", summary.c_str());
+
+                if (existing_comment.empty())
+                {
+                    new_comment = ai_comment_line;
                 }
                 else
                 {
-                    size_t first_line_end = content.find('\n');
-                    summary = content.substr(0, first_line_end);
+                    new_comment.sprnt("%s\n%s", ai_comment_line.c_str(), existing_comment.c_str());
                 }
 
-                qstring comment;
-                get_func_cmt(&comment, pfn_cb, true);
-                if (comment.find("AI Assist:") == qstring::npos)
+                set_func_cmt(pfn_cb, new_comment.c_str(), true);
+
+                if (init_hexrays_plugin())
                 {
-                    qstring new_comment;
-                    if (comment.empty())
-                        new_comment.sprnt("// AI Assist: %s", summary.c_str());
-                    else
-                        new_comment.sprnt("// AI Assist: %s\n%s", summary.c_str(), comment.c_str());
-
-                    set_func_cmt(pfn_cb, new_comment.c_str(), true);
-
-                    if (init_hexrays_plugin())
-                    {
-                        mark_cfunc_dirty(pfn_cb->start_ea, true);
-                    }
-
-                    request_refresh(IWID_DISASM);
-
-                    msg("AiDA: Comment added to function at 0x%a.\n", pfn_cb->start_ea);
+                    mark_cfunc_dirty(pfn_cb->start_ea, true);
                 }
-                else
-                {
-                    msg("AiDA: AI-generated comment already exists.\n");
-                }
+
+                request_refresh(IWID_DISASM);
+                msg("AiDA: Comment added to function at 0x%a.\n", pfn_cb->start_ea);
             });
     };
-    plugin->ai_client->analyze_function(func_ea, on_complete);
+    plugin->ai_client->generate_comment(func_ea, on_complete);
 }
 
 void handle_generate_struct(action_activation_ctx_t* ctx, aida_plugin_t* plugin)

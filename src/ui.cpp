@@ -24,9 +24,6 @@ static bool idaapi handle_viewer_dblclick(TWidget* viewer, int /*shift*/, void* 
     return false;
 }
 
-
-
-
 // Helper: fetch OpenRouter models dynamically via API (fallback handled by caller)
 static std::vector<std::string> fetch_openrouter_models_via_api(const qstring& api_key)
 {

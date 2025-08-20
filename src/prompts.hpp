@@ -163,6 +163,37 @@ The snippet should include:
 ```
 )V0G0N";
 
+const char* const GENERATE_COMMENT_PROMPT = R"V0G0N(
+Analyze the provided function's code and context. Generate a single, concise, one-line C-style comment that summarizes its primary purpose.
+
+**RULES:**
+1.  The comment MUST be a single line.
+2.  The comment MUST NOT contain any newline characters (`\n`).
+3.  The comment MUST be 82 characters or less.
+4.  The comment should be technical and accurate, suitable for a reverse engineer.
+5.  Do NOT include the leading `//` or any other formatting. Just return the raw comment text.
+
+**Good Example:** "Calculates player damage based on weapon type and distance."
+**Bad Example:**
+"// This function is responsible for calculating the damage dealt to a player.
+It takes several factors into account."
+
+--- CONTEXT ---
+
+**Target Function's Decompiled {language} Code:**
+```cpp
+// Function at address: {func_ea_hex}
+{code}
+```
+
+**Cross-References to this function (who calls it?):**
+{xrefs_to}
+
+**Cross-References from this function (what does it call?):**
+{xrefs_from}
+--- END CONTEXT ---
+)V0G0N";
+
 const char* const CUSTOM_QUERY_PROMPT = R"V0G0N(
 Answer the user's specific question about the following code in a direct, technical manner.
 Focus on aspects relevant to game hacking. Use the provided context to inform your answer.
