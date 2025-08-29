@@ -1,3 +1,4 @@
+#include <Windows.h> // im sorry linux users idk what to do for you, if u have a solution make a PR and ill accept it
 #include "aida_pro.hpp"
 
 namespace ida_utils
@@ -910,5 +911,122 @@ namespace ida_utils
             }
         }
         return false;
+    }
+
+    static qstring escape_for_idc(const std::string& s)
+    {
+        qstring escaped;
+        escaped.reserve(s.length() * 2);
+        for (char c : s)
+        {
+            switch (c)
+            {
+            case '"':  escaped.append("\\\""); break;
+            case '\\': escaped.append("\\\\"); break;
+            case '\n': escaped.append("\\n");  break;
+            case '\r': escaped.append("\\r");  break;
+            case '\t': escaped.append("\\t");  break;
+            default:
+                if (c < 32 || static_cast<unsigned char>(c) > 126)
+                {
+                    escaped.cat_sprnt("\\x%02X", static_cast<unsigned char>(c));
+                }
+                else
+                {
+                    escaped.append(c);
+                }
+                break;
+            }
+        }
+        return escaped;
+    }
+
+    bool set_clipboard_text(const qstring& text)
+    {
+        // im sorry linux users idk what to do for you, if u have a solution make a PR and ill accept it
+        if (!OpenClipboard(nullptr))
+        {
+            warning("AiDA: Could not open clipboard.");
+            return false;
+        }
+
+        struct clipboard_closer_t
+        {
+            ~clipboard_closer_t() { CloseClipboard(); }
+        } closer;
+
+        if (!EmptyClipboard())
+        {
+            warning("AiDA: Could not empty clipboard.");
+            return false;
+        }
+
+        qwstring wtext;
+        if (!utf8_utf16(&wtext, text.c_str()))
+        {
+            warning("AiDA: Failed to convert text to UTF-16 for clipboard.");
+            return false;
+        }
+
+        size_t wlen = wtext.length();
+        HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, (wlen + 1) * sizeof(wchar16_t));
+        if (hg == nullptr)
+        {
+            warning("AiDA: GlobalAlloc failed for clipboard.");
+            return false;
+        }
+
+        wchar16_t* locked_mem = (wchar16_t*)GlobalLock(hg);
+        if (locked_mem == nullptr)
+        {
+            warning("AiDA: GlobalLock failed for clipboard.");
+            GlobalFree(hg);
+            return false;
+        }
+
+        memcpy(locked_mem, wtext.c_str(), (wlen + 1) * sizeof(wchar16_t));
+        GlobalUnlock(hg);
+
+        if (SetClipboardData(CF_UNICODETEXT, hg) == nullptr)
+        {
+            warning("AiDA: SetClipboardData failed.");
+            GlobalFree(hg);
+            return false;
+        }
+
+        return true;
+    }
+
+    std::string format_context_for_clipboard(const nlohmann::json& context)
+    {
+        std::stringstream ss;
+
+        ss << "Function: " << context.value("func_ea_hex", "N/A") << "\n";
+        ss << "Prototype: " << context.value("func_prototype", "// N/A") << "\n\n";
+
+        ss << "--- Decompiled " << context.value("language", "Code") << " ---\n";
+        ss << context.value("code", "// No code available.") << "\n\n";
+
+        ss << "--- Local Variables ---\n";
+        ss << context.value("local_vars", "// No local variables found.") << "\n\n";
+
+        ss << "--- String Literals Referenced ---\n";
+        ss << context.value("string_xrefs", "// No string literals referenced.") << "\n\n";
+
+        ss << "--- Callers (Functions that call this one) ---\n";
+        ss << context.value("xrefs_to", "// No callers found.") << "\n\n";
+
+        ss << "--- Callees (Functions this one calls) ---\n";
+        ss << context.value("xrefs_from", "// No callees found.") << "\n\n";
+
+        if (context.contains("struct_context")) {
+            ss << "--- Struct Member Usage & Data Cross-References ---\n";
+            ss << context.value("struct_context", "// No struct context available.") << "\n\n";
+        }
+
+        ss << "--- Decompiler Warnings ---\n";
+        ss << context.value("decompiler_warnings", "// No decompiler warnings.") << "\n";
+
+        return ss.str();
     }
 }

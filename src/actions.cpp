@@ -223,6 +223,34 @@ void handle_custom_query(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
     }
 }
 
+void handle_copy_context(action_activation_ctx_t* ctx, aida_plugin_t* /*plugin*/)
+{
+    const ea_t func_ea = ctx->cur_ea;
+    if (!ida_utils::ensure_function_context(func_ea))
+        return;
+
+    nlohmann::json context = ida_utils::get_context_for_prompt(func_ea, true);
+    
+    if (!context.value("ok", false))
+    {
+        warning("AiDA: Failed to gather context: %s", context.value("message", "Unknown error").c_str());
+        return;
+    }
+
+    std::string clipboard_text = ida_utils::format_context_for_clipboard(context);
+
+    if (ida_utils::set_clipboard_text(clipboard_text.c_str()))
+    {
+        qstring func_name;
+        get_func_name(&func_name, func_ea);
+        msg("AiDA: Context for function '%s' (0x%a) copied to clipboard.\n", func_name.c_str(), func_ea);
+    }
+    else
+    {
+        warning("AiDA: Failed to copy context to clipboard.");
+    }
+}
+
 void handle_scan_for_offsets(action_activation_ctx_t* /*ctx*/, aida_plugin_t* /*plugin*/)
 {
     msg("====================================================\n");

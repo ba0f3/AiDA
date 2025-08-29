@@ -22,6 +22,7 @@ void handle_auto_comment(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_generate_struct(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_generate_hook(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_custom_query(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
+void handle_copy_context(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_scan_for_offsets(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_show_settings(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 

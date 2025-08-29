@@ -20,6 +20,8 @@ namespace ida_utils
     std::string get_struct_usage_context(ea_t ea);
     std::string get_data_xrefs_for_struct(const tinfo_t& struct_tif, const settings_t& settings);
     nlohmann::json get_context_for_prompt(ea_t ea, bool include_struct_context = false, size_t max_len = 0);
+    std::string format_context_for_clipboard(const nlohmann::json& context);
+    bool set_clipboard_text(const qstring& text);
     void apply_struct_from_cpp(const std::string& cpp_code, ea_t ea);
     std::string format_prompt(const char* prompt_template, const nlohmann::json& context);
     bool is_word_char(char c);

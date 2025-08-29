@@ -341,6 +341,7 @@ static int idaapi finish_populating_widget_popup(TWidget* widget, TPopupMenu* po
         { nullptr,                     nullptr }, // Separator
         { "ai_assistant:scan_for_offsets", "" },
         { "ai_assistant:custom_query", "" },
+        { "ai_assistant:copy_context", "" },
         { nullptr,                     nullptr }, // Separator
         { "ai_assistant:settings",     "" },
     };
