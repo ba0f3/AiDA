@@ -1,5 +1,6 @@
 #include <Windows.h> // im sorry linux users idk what to do for you, if u have a solution make a PR and ill accept it
 #include "aida_pro.hpp"
+#include <set>
 
 namespace ida_utils
 {
@@ -878,13 +879,90 @@ namespace ida_utils
         return qisalnum(c) || c == '_' || c == ':';
     }
 
-    bool ensure_function_context(ea_t ea) {
-        if (get_func(ea) == nullptr) {
-            warning("AiDA: Please place the cursor inside a function.");
-            return false;
+    struct func_chooser_t : public chooser_t
+    {
+        const std::vector<ea_t>& funcs;
+        func_chooser_t(const std::vector<ea_t>& f)
+           : chooser_t(CH_MODAL, 1, WIDTHS, HEADER, "Select a function that references this item"), funcs(f) {}
+
+        const void* get_obj_id(size_t* len) const override
+        {
+            *len = sizeof(this);
+            return this;
         }
-        return true;
+
+        size_t idaapi get_count() const override { return funcs.size(); }
+        void idaapi get_row(
+            qstrvec_t* out,
+            int* /*out_icon*/,
+            chooser_item_attrs_t* /*out_attrs*/,
+            size_t n) const override
+        {
+            qstring func_name;
+            get_func_name(&func_name, funcs[n]);
+            out->push_back(func_name);
+        }
+
+        static const int WIDTHS[];
+        static const char* const HEADER[];
+    };
+
+    const int func_chooser_t::WIDTHS[] = { 30 };
+    const char* const func_chooser_t::HEADER[] = { "Function" };
+
+    func_t* get_function_for_item(ea_t ea)
+    {
+        func_t* pfn = get_func(ea);
+        if (pfn != nullptr)
+        {
+            return pfn;
+        }
+
+        qstring name;
+        ea_t item_ea = get_item_head(ea);
+        if (!get_name(&name, item_ea))
+        {
+            warning("AiDA: Please place the cursor inside a function or on a named data item.");
+            return nullptr;
+        }
+
+        xrefblk_t xb;
+        std::set<ea_t> func_eas;
+        for (bool ok = xb.first_to(item_ea, XREF_ALL); ok; ok = xb.next_to())
+        {
+            if (xb.iscode)
+            {
+                func_t* ref_pfn = get_func(xb.from);
+                if (ref_pfn)
+                {
+                    func_eas.insert(ref_pfn->start_ea);
+                }
+            }
+        }
+
+        if (func_eas.empty())
+        {
+            warning("AiDA: No code references found to '%s'. Action requires a function context.", name.c_str());
+            return nullptr;
+        }
+
+        if (func_eas.size() == 1)
+        {
+            return get_func(*func_eas.begin());
+        }
+
+        std::vector<ea_t> func_vec(func_eas.begin(), func_eas.end());
+        func_chooser_t chooser(func_vec);
+        ssize_t selected_idx = chooser.choose();
+
+        if (selected_idx < 0)
+        {
+            return nullptr; // User cancelled
+        }
+
+        return get_func(func_vec[selected_idx]);
     }
+    
     qstring qstring_tolower(const qstring& s)
     {
         qstring lower_s = s;
@@ -1028,5 +1106,128 @@ namespace ida_utils
         ss << context.value("decompiler_warnings", "// No decompiler warnings.") << "\n";
 
         return ss.str();
+    }
+
+    qstring apply_renames_from_ai(ea_t func_ea, const std::string& cpp_code)
+    {
+        if (!init_hexrays_plugin())
+        {
+            warning("AiDA: Renaming requires the Hex-Rays decompiler.");
+            return "";
+        }
+
+        func_t* pfn = get_func(func_ea);
+        if (pfn == nullptr)
+        {
+            warning("AiDA: Function at 0x%a not found for renaming.", func_ea);
+            return "";
+        }
+
+        cfuncptr_t cfunc = decompile(pfn);
+        if (cfunc == nullptr)
+        {
+            warning("AiDA: Decompilation failed for function at 0x%a.", func_ea);
+            return "";
+        }
+
+        std::string rename_block;
+        std::smatch match_md;
+        if (std::regex_search(cpp_code, match_md, std::regex("```(?:cpp)?\\s*([\\s\\S]*?)\\s*```")))
+        {
+            rename_block = match_md[1].str();
+        }
+        else
+        {
+            rename_block = cpp_code;
+        }
+
+        std::stringstream ss(rename_block);
+        std::string line;
+        qstring summary;
+        int renamed_count = 0;
+
+        static const std::regex rename_pattern(R"(\s*//\s*.*?\s+([a-zA-Z_][a-zA-Z0-9_:$]*)\s*;?\s*->\s*.*?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;?\s*//.*)");
+
+        while (std::getline(ss, line))
+        {
+            std::smatch matches;
+            if (std::regex_match(line, matches, rename_pattern) && matches.size() == 3)
+            {
+                std::string original_name_str = matches[1].str();
+                std::string new_name_str = matches[2].str();
+                qstring original_name = original_name_str.c_str();
+                qstring new_name = new_name_str.c_str();
+
+                if (original_name.empty() || new_name.empty() || original_name == new_name)
+                {
+                    continue;
+                }
+
+                bool renamed = false;
+                lvars_t* lvars = cfunc->get_lvars();
+                if (lvars)
+                {
+                    for (lvar_t& lv : *lvars)
+                    {
+                        if (lv.name == original_name)
+                        {
+                            lvar_saved_info_t lsi;
+                            lsi.ll = lv; // copy locator
+                            lsi.name = new_name;
+                            if (modify_user_lvar_info(func_ea, MLI_NAME, lsi))
+                            {
+                                summary.cat_sprnt("Local variable: %s -> %s\n", original_name.c_str(), new_name.c_str());
+                                renamed = true;
+                                renamed_count++;
+                            }
+                            else
+                            {
+                                msg("AiDA: Failed to rename local variable '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                if (!renamed)
+                {
+                    ea_t addr = get_name_ea(BADADDR, original_name.c_str());
+                    if (addr != BADADDR)
+                    {
+                        bool referenced_in_function = false;
+                        xrefblk_t xb;
+                        for (bool ok = xb.first_to(addr, XREF_ALL); ok; ok = xb.next_to())
+                        {
+                            if (func_contains(pfn, xb.from))
+                            {
+                                referenced_in_function = true;
+                                break;
+                            }
+                        }
+
+                        if (referenced_in_function)
+                        {
+                            if (set_name(addr, new_name.c_str(), SN_FORCE | SN_NODUMMY))
+                            {
+                                summary.cat_sprnt("Global name: %s -> %s (at 0x%a)\n", original_name.c_str(), new_name.c_str(), addr);
+                                renamed = true;
+                                renamed_count++;
+                            }
+                            else
+                            {
+                                msg("AiDA: Failed to rename global '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (renamed_count > 0)
+        {
+            msg("AiDA: Applied %d renames.\n", renamed_count);
+        }
+
+        return summary;
     }
 }

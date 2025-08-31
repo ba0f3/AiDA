@@ -16,9 +16,10 @@ action_state_t idaapi action_handler::update(action_update_ctx_t* ctx)
 
 void handle_analyze_function(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     auto on_complete = [func_ea](const std::string& analysis) {
         action_helpers::handle_ai_response(analysis, "AI Analysis for 0x%a",
@@ -33,10 +34,10 @@ void handle_analyze_function(action_activation_ctx_t* ctx, aida_plugin_t* plugin
 
 void handle_rename_function(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    func_t* pfn = get_func(func_ea);
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     qstring current_name;
     if (get_func_name(&current_name, func_ea) > 0 && is_uname(current_name.c_str()))
@@ -97,9 +98,10 @@ void handle_rename_function(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 
 void handle_auto_comment(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     auto on_complete = [func_ea](const std::string& comment_text) {
         action_helpers::handle_ai_response(comment_text, "AI Comment",
@@ -169,9 +171,10 @@ void handle_auto_comment(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 
 void handle_generate_struct(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     auto on_complete = [func_ea](const std::string& struct_cpp) {
         action_helpers::handle_ai_response(struct_cpp, "Generated Struct",
@@ -184,10 +187,10 @@ void handle_generate_struct(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 
 void handle_generate_hook(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    func_t* pfn = get_func(func_ea);
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     auto on_complete = [func_ea](const std::string& hook_code) {
         action_helpers::handle_ai_response(hook_code, "Generated Hook",
@@ -204,9 +207,10 @@ void handle_generate_hook(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 
 void handle_custom_query(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     qstring question;
     if (ask_str(&question, HIST_SRCH, "Ask AI about this function:"))
@@ -225,9 +229,10 @@ void handle_custom_query(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
 
 void handle_copy_context(action_activation_ctx_t* ctx, aida_plugin_t* /*plugin*/)
 {
-    const ea_t func_ea = ctx->cur_ea;
-    if (!ida_utils::ensure_function_context(func_ea))
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
         return;
+    const ea_t func_ea = pfn->start_ea;
 
     nlohmann::json context = ida_utils::get_context_for_prompt(func_ea, true);
     
@@ -249,6 +254,37 @@ void handle_copy_context(action_activation_ctx_t* ctx, aida_plugin_t* /*plugin*/
     {
         warning("AiDA: Failed to copy context to clipboard.");
     }
+}
+
+void handle_rename_all(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
+{
+    func_t* pfn = ida_utils::get_function_for_item(ctx->cur_ea);
+    if (pfn == nullptr)
+        return;
+    const ea_t func_ea = pfn->start_ea;
+
+    auto on_complete = [func_ea](const std::string& rename_suggestions) {
+        action_helpers::handle_ai_response(rename_suggestions, "Rename Suggestions",
+            [func_ea](const std::string& content) {
+                qstring summary = ida_utils::apply_renames_from_ai(func_ea, content);
+                if (summary.empty())
+                {
+                    msg("AiDA: No valid renames suggested by AI or nothing to rename.\n");
+                    return;
+                }
+
+                qstring title;
+                title.sprnt("Renaming summary for 0x%a", func_ea);
+                show_text_in_viewer(title.c_str(), summary.c_str());
+
+                if (init_hexrays_plugin())
+                {
+                    mark_cfunc_dirty(func_ea, true);
+                }
+                request_refresh(IWID_DISASM | IWID_PSEUDOCODE);
+            });
+    };
+    plugin->ai_client->rename_all(func_ea, on_complete);
 }
 
 void handle_scan_for_offsets(action_activation_ctx_t* /*ctx*/, aida_plugin_t* /*plugin*/)

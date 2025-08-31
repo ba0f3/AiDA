@@ -335,6 +335,7 @@ static int idaapi finish_populating_widget_popup(TWidget* widget, TPopupMenu* po
     static const menu_item_t menu_items[] = {
         { "ai_assistant:analyze",      "Analyze/" },
         { "ai_assistant:rename",       "Analyze/" },
+        { "ai_assistant:rename_all",   "Analyze/" },
         { "ai_assistant:comment",      "Analyze/" },
         { "ai_assistant:gen_struct",   "Generate/" },
         { "ai_assistant:gen_hook",     "Generate/" },

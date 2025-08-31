@@ -49,6 +49,7 @@ void aida_plugin_t::register_actions()
         {"ai_assistant:gen_hook", "Generate MinHook C++ snippet", handle_generate_hook, "Ctrl+Alt+H"},
         {"ai_assistant:custom_query", "Custom query...", handle_custom_query, "Ctrl+Alt+Q"},
         {"ai_assistant:copy_context", "Copy Context", handle_copy_context, "Ctrl+Alt+X"},
+        {"ai_assistant:rename_all", "Rename variables/functions...", handle_rename_all, "Ctrl+Alt+R"},
         {"ai_assistant:scan_for_offsets", "Scan for Engine Pointers (Coming Soon!)", handle_scan_for_offsets, ""},
         {"ai_assistant:settings", "Settings...", handle_show_settings, "Ctrl+Alt+O"},
     };

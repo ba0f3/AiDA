@@ -387,6 +387,18 @@ void AIClient::locate_global_pointer(ea_t ea, const std::string& target_name, ad
     _generate(prompt, on_result, 0.0, "global pointer location");
 }
 
+void AIClient::rename_all(ea_t ea, callback_t callback)
+{
+    json context = ida_utils::get_context_for_prompt(ea, true);
+    if (!context["ok"].get<bool>())
+    {
+        callback(context["message"].get<std::string>());
+        return;
+    }
+    std::string prompt = ida_utils::format_prompt(RENAME_ALL_PROMPT, context);
+    _generate(prompt, callback, 0.0, "renaming");
+}
+
 GeminiClient::GeminiClient(const settings_t& settings) : AIClient(settings)
 {
     _model_name = _settings.gemini_model_name;

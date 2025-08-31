@@ -252,3 +252,63 @@ Function Decompilation:
 {code}
 ```
 )V0G0N";
+
+const char* const RENAME_ALL_PROMPT = R"V0G0N(
+You are a world-class expert in reverse engineering modern C++ games. Your task is to analyze the provided function's pseudocode and its context to suggest meaningful, descriptive names for variables, functions, and data that currently have cryptic, offset-like, or compiler-generated names (e.g., `v5`, `a2`, `sub_140001000`, `qword_1400C1A0`).
+
+**Analysis & Naming Rules:**
+1.  **Strictly Adhere to Context:** Your analysis and suggestions MUST be based *only* on the information provided in the "CONTEXT" section. Do not rename any variable, function, or data item that is not explicitly mentioned in the decompiled code, local variables list, or cross-references.
+2.  **Infer Purpose:** Deduce the purpose of each item based on its usage within the function's logic, its interactions with data structures, and the functions it calls or is called by. For example, a variable passed to `Sleep` is likely a duration; a pointer used in many member accesses is likely a `this` pointer.
+3.  **Naming Convention:** Use clear, descriptive `camelCase` for variables (e.g., `playerHealth`, `authContext`) and `PascalCase` for functions (e.g., `CalculatePlayerDamage`, `SendNetworkPacket`).
+4.  **Focus on Cryptic Names:** Only suggest renames for items with non-descriptive names (like `v5`, `a2`, `sub_...`, `qword_...`, `unk_...`). Do NOT rename items that already have meaningful names (e.g., `pPlayer`, `g_GameManager`) or simple loop counters (`i`, `j`, `k`) unless they have a very specific, non-obvious purpose, or if their name is misleading.
+5.  **Provide Reasoning:** For each suggested rename, provide a brief but clear justification based on your analysis of the provided context.
+
+**Output Format:**
+You MUST provide the output within a single C++ code block. Each line must follow this exact format:
+`// {original_type} {original_name}; -> {new_type} {new_name}; // {reasoning}`
+
+**Example Output:**
+```cpp
+// __int64 v5; -> __int64 authContext; // Points to the main authentication object, used in multiple security checks.
+// void *v8; -> void *networkPacket; // Allocated buffer that is passed to SendPacket function.
+// int sub_140001000(); -> int GetPlayerById(); // Takes an integer ID, returns a pointer found in a global player list.
+// _QWORD qword_1400C1A0; -> _QWORD G_PlayerArray; // Referenced as an array of player pointers.
+```
+
+**CRITICAL:**
+- **Return ONLY the C++ code block with the rename suggestions.** Do not include any other text, explanations, or markdown formatting outside of this block.
+- If no renames are necessary, return an empty code block.
+
+--- CONTEXT ---
+
+**Target Function's Decompiled {language} Code:**
+```cpp
+// Function at address: {func_ea_hex}
+{code}
+```
+
+**Local Variables:**
+```
+{local_vars}
+```
+
+**String Literals Referenced:**
+```
+{string_xrefs}
+```
+
+**Call Graph (Callers - functions that call this one):**
+{xrefs_to}
+
+**Call Graph (Callees - functions this one calls):**
+{xrefs_from}
+
+**Struct Member Usage & Data Cross-References (Global Usage):**
+{struct_context}
+
+**Decompiler Warnings:**
+```
+{decompiler_warnings}
+```
+--- END CONTEXT ---
+)V0G0N";

@@ -25,6 +25,7 @@ void handle_custom_query(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_copy_context(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_scan_for_offsets(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 void handle_show_settings(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
+void handle_rename_all(action_activation_ctx_t* ctx, aida_plugin_t* plugin);
 
 namespace action_helpers {
 void handle_ai_response(const std::string& result, const qstring& title_prefix,
