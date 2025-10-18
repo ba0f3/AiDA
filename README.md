@@ -53,27 +53,7 @@ Once the prerequisites are met:
     * `%APPDATA%\Hex-Rays\IDA Pro\plugins` on Windows
     * `$HOME/.idapro/plugins` on Linux/Mac
 
-## MCP Installation
 
-AiDA also supports Model Context Protocol (MCP) integration. This feature is based on the excellent work from [ida-pro-mcp](https://github.com/mrexodia/ida-pro-mcp) by mrexodia.
-
-### Prerequisites
-
-Ensure you have **Python 3.11** or higher installed on your system.
-
-### Installation Steps
-
-1.  Install AiDA via pip:
-    ```bash
-    pip install git+https://github.com/sigwl/AiDA
-    ```
-
-2.  Run the installation command to automatically copy the plugin to your IDA Pro plugins directory:
-    ```bash
-    aida --install
-    ```
-
-3.  Open IDA Pro, go to **Edit → Plugins**, and click **AiDA-MCP** to activate the Model Context Protocol support.
 
 ## Configuration
 

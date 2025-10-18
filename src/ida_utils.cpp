@@ -1146,77 +1146,173 @@ namespace ida_utils
         qstring summary;
         int renamed_count = 0;
 
-        static const std::regex rename_pattern(R"(\s*//\s*.*?\s+([a-zA-Z_][a-zA-Z0-9_:$]*)\s*;?\s*->\s*.*?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;?\s*//.*)");
-
         while (std::getline(ss, line))
         {
-            std::smatch matches;
-            if (std::regex_match(line, matches, rename_pattern) && matches.size() == 3)
+            if (line.rfind("//", 0) != 0) // Must start with //
+                continue;
+
+            size_t arrow_pos = line.find("->");
+            if (arrow_pos == std::string::npos)
+                continue;
+
+            std::string left_part_str = line.substr(2, arrow_pos - 2);
+            std::string right_part_str = line.substr(arrow_pos + 2);
+
+            size_t comment_pos = right_part_str.find("//");
+            if (comment_pos != std::string::npos)
+                right_part_str = right_part_str.substr(0, comment_pos);
+            
+            qstring q_left(left_part_str.c_str());
+            q_left.trim2();
+            if (q_left.ends_with(";"))
+                q_left.remove_last();
+            q_left.trim2();
+
+            qstring q_right(right_part_str.c_str());
+            q_right.trim2();
+            if (q_right.ends_with(";"))
+                q_right.remove_last();
+            q_right.trim2();
+
+
+            // Heuristics to extract name from a C-style declaration
+            auto sanitize_name = [](qstring& s) {
+                // For functions: int func(...) -> func
+                ssize_t paren = s.find('(');
+                if (paren != -1)
+                    s.resize(paren);
+                
+                // For arrays: int arr[...] -> arr
+                ssize_t bracket = s.find('[');
+                if (bracket != -1)
+                    s.resize(bracket);
+
+                s.trim2();
+
+                // For variables/types: type var -> var
+                // Also handles pointers: type * var -> var
+                ssize_t pos = s.rfind(' ');
+                if (pos == -1)
+                    pos = s.rfind('*');
+                
+                if (pos != -1)
+                    s = s.substr(pos + 1);
+                
+                s.trim2();
+            };
+
+            qstring original_name = q_left;
+            qstring new_name = q_right;
+            sanitize_name(original_name);
+            sanitize_name(new_name);
+
+            if (original_name.empty() || new_name.empty() || original_name == new_name)
+                continue;
+
+            bool renamed = false;
+            lvars_t* lvars = cfunc->get_lvars();
+            if (lvars)
             {
-                std::string original_name_str = matches[1].str();
-                std::string new_name_str = matches[2].str();
-                qstring original_name = original_name_str.c_str();
-                qstring new_name = new_name_str.c_str();
-
-                if (original_name.empty() || new_name.empty() || original_name == new_name)
+                for (lvar_t& lv : *lvars)
                 {
-                    continue;
-                }
-
-                bool renamed = false;
-                lvars_t* lvars = cfunc->get_lvars();
-                if (lvars)
-                {
-                    for (lvar_t& lv : *lvars)
+                    if (lv.name == original_name)
                     {
-                        if (lv.name == original_name)
+                        lvar_saved_info_t lsi;
+                        lsi.ll = lv; // copy locator
+                        lsi.name = new_name;
+                        if (modify_user_lvar_info(func_ea, MLI_NAME, lsi))
                         {
-                            lvar_saved_info_t lsi;
-                            lsi.ll = lv; // copy locator
-                            lsi.name = new_name;
-                            if (modify_user_lvar_info(func_ea, MLI_NAME, lsi))
-                            {
-                                summary.cat_sprnt("Local variable: %s -> %s\n", original_name.c_str(), new_name.c_str());
-                                renamed = true;
-                                renamed_count++;
-                            }
-                            else
-                            {
-                                msg("AiDA: Failed to rename local variable '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
-                            }
-                            break;
+                            summary.cat_sprnt("Local variable: %s -> %s\n", original_name.c_str(), new_name.c_str());
+                            renamed = true;
+                            renamed_count++;
                         }
+                        else
+                        {
+                            msg("AiDA: Failed to rename local variable '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                        }
+                        break;
                     }
                 }
+            }
 
-                if (!renamed)
+            if (!renamed)
+            {
+                ea_t addr = get_name_ea(func_ea, original_name.c_str());
+                if (addr != BADADDR)
                 {
-                    ea_t addr = get_name_ea(BADADDR, original_name.c_str());
-                    if (addr != BADADDR)
+                    bool is_local_to_func = func_contains(pfn, addr);
+                    bool name_is_relevant = is_local_to_func;
+
+                    if (!name_is_relevant)
                     {
-                        bool referenced_in_function = false;
                         xrefblk_t xb;
                         for (bool ok = xb.first_to(addr, XREF_ALL); ok; ok = xb.next_to())
                         {
                             if (func_contains(pfn, xb.from))
                             {
-                                referenced_in_function = true;
+                                name_is_relevant = true;
                                 break;
                             }
                         }
+                    }
 
-                        if (referenced_in_function)
+                    if (name_is_relevant)
+                    {
+                        if (set_name(addr, new_name.c_str(), SN_FORCE | SN_NODUMMY))
                         {
-                            if (set_name(addr, new_name.c_str(), SN_FORCE | SN_NODUMMY))
-                            {
-                                summary.cat_sprnt("Global name: %s -> %s (at 0x%a)\n", original_name.c_str(), new_name.c_str(), addr);
-                                renamed = true;
-                                renamed_count++;
-                            }
-                            else
-                            {
-                                msg("AiDA: Failed to rename global '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
-                            }
+                            summary.cat_sprnt("%s: %s -> %s (at 0x%a)\n",
+                                is_local_to_func ? "Local label" : "Global name",
+                                original_name.c_str(), new_name.c_str(), addr);
+                            renamed = true;
+                            renamed_count++;
+                        }
+                        else
+                        {
+                            msg("AiDA: Failed to rename '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                        }
+                    }
+                }
+            }
+            
+            if (!renamed)
+            {
+                segment_t* seg = get_segm_by_name(original_name.c_str());
+                if (seg != nullptr)
+                {
+                    if (set_segm_name(seg, new_name.c_str()) != 0)
+                    {
+                        summary.cat_sprnt("Segment: %s -> %s\n", original_name.c_str(), new_name.c_str());
+                        renamed = true;
+                        renamed_count++;
+                        request_refresh(IWID_SEGS | IWID_DISASM);
+                    }
+                    else
+                    {
+                        msg("AiDA: Failed to rename segment '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                    }
+                }
+            }
+
+            if (!renamed)
+            {
+                til_t* til = get_idati();
+                tinfo_t tif;
+                if (tif.get_named_type(til, original_name.c_str()))
+                {
+                    if (tif.is_udt() || tif.is_enum())
+                    {
+                        if (tif.rename_type(new_name.c_str()) == TERR_OK)
+                        {
+                            summary.cat_sprnt("%s: %s -> %s\n",
+                                tif.is_udt() ? "Struct/Union" : "Enum",
+                                original_name.c_str(), new_name.c_str());
+                            renamed = true;
+                            renamed_count++;
+                            request_refresh(IWID_TILS | IWID_TICSR);
+                        }
+                        else
+                        {
+                            msg("AiDA: Failed to rename type '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
                         }
                     }
                 }
