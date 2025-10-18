@@ -44,7 +44,7 @@ void aida_plugin_t::register_actions()
     static const action_def_t action_definitions[] = {
         {"ai_assistant:analyze", "Analyze function...", handle_analyze_function, "Ctrl+Alt+A"},
         {"ai_assistant:rename", "Suggest new name...", handle_rename_function, "Ctrl+Alt+S"},
-        {"ai_assistant:comment", "Add AI-generated comment", handle_auto_comment, "Ctrl+Alt+C"},
+        {"ai_assistant:comment", "Add AI-generated comments", handle_auto_comment, "Ctrl+Alt+C"},
         {"ai_assistant:gen_struct", "Generate struct from function", handle_generate_struct, "Ctrl+Alt+G"},
         {"ai_assistant:gen_hook", "Generate MinHook C++ snippet", handle_generate_hook, "Ctrl+Alt+H"},
         {"ai_assistant:custom_query", "Custom query...", handle_custom_query, "Ctrl+Alt+Q"},

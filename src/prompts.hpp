@@ -163,20 +163,38 @@ The snippet should include:
 ```
 )V0G0N";
 
-const char* const GENERATE_COMMENT_PROMPT = R"V0G0N(
-Analyze the provided function's code and context. Generate a single, concise, one-line C-style comment that summarizes its primary purpose.
+const char* const GENERATE_COMMENTS_PROMPT = R"V0G0N(
+You are a world-class expert in reverse engineering modern C++ games. Your task is to analyze the provided function's pseudocode and generate detailed, line-by-line C-style comments for critical parts of the code.
 
-**RULES:**
-1.  The comment MUST be a single line.
-2.  The comment MUST NOT contain any newline characters (`\n`).
-3.  The comment MUST be 82 characters or less.
-4.  The comment should be technical and accurate, suitable for a reverse engineer.
-5.  Do NOT include the leading `//` or any other formatting. Just return the raw comment text.
+**Analysis & Commenting Rules:**
+1.  **Identify Key Logic:** Analyze the function to identify important logical blocks, complex calculations, significant variable initializations, and calls to important functions.
+2.  **Generate Granular Comments:** For each key point you identify, create a concise, technical comment explaining what that specific line or block of code does.
+3.  **Focus on "Why", not just "What":** Your comments should explain the purpose of the code in the context of the function. For example, instead of "Adds 1 to v5", write "Increments the player's ammo count."
+4.  **Output Format:** Your entire output MUST be a single, valid JSON array of objects. Each object must have two keys:
+    - `address`: The hexadecimal address (as a string, e.g., "0x140001234") of the line the comment applies to. This address MUST be present in the provided decompiled code.
+    - `comment`: The comment string for that line. The comment should NOT include `//`. It can be a multi-line string using `\n` to explain complex logic.
 
-**Good Example:** "Calculates player damage based on weapon type and distance."
-**Bad Example:**
-"// This function is responsible for calculating the damage dealt to a player.
-It takes several factors into account."
+**Example Output:**
+```json
+[
+  {
+    "address": "0x1401B2C30",
+    "comment": "Retrieves the local player's character object."
+  },
+  {
+    "address": "0x1401B2C48",
+    "comment": "Checks if the player's health is below the critical threshold (25%).\nThis is used to trigger a low-health visual effect."
+  },
+  {
+    "address": "0x1401B2C5A",
+    "comment": "Applies a 'low health' screen effect by calling the UI manager."
+  }
+]
+```
+
+**CRITICAL:**
+- **Return ONLY the JSON array.** Do not include any other text, explanations, or markdown formatting.
+- If you cannot generate any meaningful comments, return an empty JSON array `[]`.
 
 --- CONTEXT ---
 
@@ -186,11 +204,29 @@ It takes several factors into account."
 {code}
 ```
 
-**Cross-References to this function (who calls it?):**
+**Local Variables:**
+```
+{local_vars}
+```
+
+**String Literals Referenced:**
+```
+{string_xrefs}
+```
+
+**Call Graph (Callers - functions that call this one):**
 {xrefs_to}
 
-**Cross-References from this function (what does it call?):**
+**Call Graph (Callees - functions this one calls):**
 {xrefs_from}
+
+**Struct Member Usage & Data Cross-References (Global Usage):**
+{struct_context}
+
+**Decompiler Warnings:**
+```
+{decompiler_warnings}
+```
 --- END CONTEXT ---
 )V0G0N";
 

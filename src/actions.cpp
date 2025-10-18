@@ -1,4 +1,5 @@
 #include "aida_pro.hpp"
+#include <regex>
 
 int idaapi action_handler::activate(action_activation_ctx_t* ctx)
 {
@@ -103,70 +104,119 @@ void handle_auto_comment(action_activation_ctx_t* ctx, aida_plugin_t* plugin)
         return;
     const ea_t func_ea = pfn->start_ea;
 
-    auto on_complete = [func_ea](const std::string& comment_text) {
-        action_helpers::handle_ai_response(comment_text, "AI Comment",
+    auto on_complete = [func_ea](const std::string& json_comments) {
+        action_helpers::handle_ai_response(json_comments, "AI Comments",
             [func_ea](const std::string& content) {
-                func_t* pfn_cb = get_func(func_ea);
-                if (!pfn_cb)
+                std::string json_str = content;
+                static const std::regex md_json_re("```(?:json)?\\s*([\\s\\S]*?)\\s*```");
+                std::smatch match;
+                if (std::regex_search(content, match, md_json_re) && match.size() > 1)
                 {
-                    warning("AiDA: Function at 0x%a no longer exists.", func_ea);
-                    return;
+                    json_str = match[1].str();
                 }
 
-                qstring summary = content.c_str();
-                summary.replace("\n", " ");
-                summary.replace("\r", " ");
-                summary.replace("`", "");
-                summary.replace("'", "");
-                summary.replace("\"", "");
-                summary.trim2();
-
-                if (summary.length() > 82)
+                try
                 {
-                    summary.resize(82);
-                    msg("AiDA: Truncated long AI comment to 82 characters.\n");
-                }
+                    cfuncptr_t cfunc(nullptr);
+                    if (init_hexrays_plugin())
+                    {
+                        func_t* pfn_for_decomp = get_func(func_ea);
+                        if (pfn_for_decomp != nullptr)
+                        {
+                            try { cfunc = decompile(pfn_for_decomp); }
+                            catch (const vd_failure_t&) 
+                            {
+                                msg("AiDA: Decompilation failed for 0x%a, comments will only be added to disassembly.\n", func_ea);
+                            }
+                        }
+                    }
 
-                if (summary.empty())
+                    auto comments = nlohmann::json::parse(json_str);
+                    if (!comments.is_array())
+                    {
+                        warning("AiDA: AI response for comments is not a JSON array.");
+                        return;
+                    }
+
+                    int count = 0;
+                    for (const auto& item : comments)
+                    {
+                        if (!item.is_object() || !item.contains("address") || !item.contains("comment"))
+                            continue;
+
+                        std::string addr_str = item["address"];
+                        std::string comment_str = item["comment"];
+
+                        ea_t ea;
+                        if (sscanf(addr_str.c_str(), "0x%llX", &ea) != 1 && sscanf(addr_str.c_str(), "%llX", &ea) != 1)
+                            continue;
+
+                        if (!is_mapped(ea))
+                            continue;
+
+                        qstring q_comment = comment_str.c_str();
+                        q_comment.trim2();
+                        if (q_comment.empty())
+                            continue;
+
+                        qstring existing_comment;
+                        get_cmt(&existing_comment, ea, false);
+
+                        qstring new_comment;
+                        if (existing_comment.empty())
+                        {
+                            new_comment = q_comment;
+                        }
+                        else
+                        {
+                            new_comment.sprnt("%s\n%s", q_comment.c_str(), existing_comment.c_str());
+                        }
+                        
+                        set_cmt(ea, new_comment.c_str(), false);
+                        count++;
+
+                        if (cfunc != nullptr)
+                        {
+                            treeloc_t loc;
+                            loc.ea = ea;
+                            loc.itp = ITP_BLOCK1;
+
+                            const char* existing_pcomment = cfunc->get_user_cmt(loc, RETRIEVE_ALWAYS);
+                            qstring new_pcomment;
+                            if (existing_pcomment == nullptr || *existing_pcomment == '\0')
+                            {
+                                new_pcomment = q_comment;
+                            }
+                            else
+                            {
+                                new_pcomment.sprnt("%s\n%s", q_comment.c_str(), existing_pcomment);
+                            }
+                            cfunc->set_user_cmt(loc, new_pcomment.c_str());
+                        }
+                    }
+
+                    if (count > 0)
+                    {
+                        msg("AiDA: Added %d comments to function at 0x%a.\n", count, func_ea);
+                        if (cfunc != nullptr)
+                        {
+                            cfunc->save_user_cmts();
+                            cfunc->refresh_func_ctext(); 
+                        }
+                        request_refresh(IWID_DISASM);
+                    }
+                    else
+                    {
+                        msg("AiDA: AI did not provide any valid comments.\n");
+                    }
+                }
+                catch (const nlohmann::json::parse_error& e)
                 {
-                    warning("AiDA: AI returned an empty comment.");
-                    return;
+                    warning("AiDA: Failed to parse AI response as JSON: %s", e.what());
                 }
-
-                qstring existing_comment;
-                get_func_cmt(&existing_comment, pfn_cb, true);
-
-                if (existing_comment.find("// AI Assist:") != qstring::npos)
-                {
-                    msg("AiDA: AI-generated comment already exists. Skipping.\n");
-                    return;
-                }
-
-                qstring new_comment;
-                qstring ai_comment_line;
-                ai_comment_line.sprnt("// AI Assist: %s", summary.c_str());
-
-                if (existing_comment.empty())
-                {
-                    new_comment = ai_comment_line;
-                }
-                else
-                {
-                    new_comment.sprnt("%s\n%s", ai_comment_line.c_str(), existing_comment.c_str());
-                }
-
-                set_func_cmt(pfn_cb, new_comment.c_str(), true);
-
-                if (init_hexrays_plugin())
-                {
-                    mark_cfunc_dirty(pfn_cb->start_ea, true);
-                }
-
-                request_refresh(IWID_DISASM);
-                msg("AiDA: Comment added to function at 0x%a.\n", pfn_cb->start_ea);
             });
     };
-    plugin->ai_client->generate_comment(func_ea, on_complete);
+    plugin->ai_client->generate_comments(func_ea, on_complete);
 }
 
 void handle_generate_struct(action_activation_ctx_t* ctx, aida_plugin_t* plugin)

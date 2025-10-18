@@ -325,7 +325,7 @@ void AIClient::generate_hook(ea_t ea, callback_t callback)
     _generate(prompt, callback, 0.0, "hook generation");
 }
 
-void AIClient::generate_comment(ea_t ea, callback_t callback)
+void AIClient::generate_comments(ea_t ea, callback_t callback)
 {
     json context = ida_utils::get_context_for_prompt(ea);
     if (!context["ok"].get<bool>())
@@ -333,7 +333,7 @@ void AIClient::generate_comment(ea_t ea, callback_t callback)
         callback(context["message"].get<std::string>());
         return;
     }
-    std::string prompt = ida_utils::format_prompt(GENERATE_COMMENT_PROMPT, context);
+    std::string prompt = ida_utils::format_prompt(GENERATE_COMMENTS_PROMPT, context);
     _generate(prompt, callback, 0.0, "comment generation");
 }
 
