@@ -410,7 +410,13 @@ bool GeminiClient::is_available() const
 }
 
 
-std::string GeminiClient::_get_api_host() const { return "https://generativelanguage.googleapis.com"; }
+std::string GeminiClient::_get_api_host() const
+{
+    if (!_settings.gemini_base_url.empty())
+        return _settings.gemini_base_url;
+    return "https://generativelanguage.googleapis.com";
+}
+
 std::string GeminiClient::_get_api_path(const std::string& model_name) const { return "/v1beta/models/" + model_name + ":generateContent?key=" + _settings.gemini_api_key; }
 httplib::Headers GeminiClient::_get_api_headers() const { return {}; }
 json GeminiClient::_get_api_payload(const std::string& prompt_text, double temperature) const
@@ -486,7 +492,13 @@ bool OpenAIClient::is_available() const
     return !_settings.openai_api_key.empty();
 }
 
-std::string OpenAIClient::_get_api_host() const { return "https://api.openai.com"; }
+std::string OpenAIClient::_get_api_host() const
+{
+    if (!_settings.openai_base_url.empty())
+        return _settings.openai_base_url;
+    return "https://api.openai.com";
+}
+
 std::string OpenAIClient::_get_api_path(const std::string&) const { return "/v1/chat/completions"; }
 httplib::Headers OpenAIClient::_get_api_headers() const
 {
@@ -589,7 +601,13 @@ bool AnthropicClient::is_available() const
     return !_settings.anthropic_api_key.empty();
 }
 
-std::string AnthropicClient::_get_api_host() const { return "https://api.anthropic.com"; }
+std::string AnthropicClient::_get_api_host() const
+{
+    if (!_settings.anthropic_base_url.empty())
+        return _settings.anthropic_base_url;
+    return "https://api.anthropic.com";
+}
+
 std::string AnthropicClient::_get_api_path(const std::string&) const { return "/v1/messages"; }
 httplib::Headers AnthropicClient::_get_api_headers() const
 {

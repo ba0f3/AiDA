@@ -13,15 +13,18 @@ public:
 
     std::string gemini_api_key;
     std::string gemini_model_name;
+    std::string gemini_base_url;
 
     std::string openai_api_key;
     std::string openai_model_name;
+    std::string openai_base_url;
 
     std::string openrouter_api_key;
     std::string openrouter_model_name;
 
     std::string anthropic_api_key;
     std::string anthropic_model_name;
+    std::string anthropic_base_url;
 
     std::string copilot_proxy_address;
     std::string copilot_model_name;

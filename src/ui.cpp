@@ -110,11 +110,13 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         // --- gemini ---
         "<API Key:q11:64:64::>\n"
         "<Model Name:b12:0:40::>\n"
+        "<Base URL (optional):q13:64:64::>\n"
         "<=:Gemini>100>\n"
 
         // --- openai ---
         "<API Key:q21:64:64::>\n"
         "<Model Name:b22:0:40::>\n"
+        "<Base URL (optional):q23:64:64::>\n"
         "<=:OpenAI>100>\n"
 
         // --- OpenRouter ---
@@ -125,6 +127,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         // --- Anthropic Tab ---
         "<API Key:q31:64:64::>\n"
         "<Model Name:b32:0:40::>\n"
+        "<Base URL (optional):q33:64:64::>\n"
         "<=:Anthropic>100>\n"
 
         // --- copilot ---
@@ -157,13 +160,11 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     for (const auto& m : settings_t::gemini_models) gemini_models_qsv.push_back(m.c_str());
     int gemini_model_idx = find_model_index(settings_t::gemini_models, g_settings.gemini_model_name);
 
-    // Build OpenAI models list from static defaults (dynamic fetching disabled)
     std::vector<std::string> openai_models_vec = settings_t::openai_models;
     qstrvec_t openai_models_qsv;
     for (const auto& m : openai_models_vec) openai_models_qsv.push_back(m.c_str());
     int openai_model_idx = find_model_index(openai_models_vec, g_settings.openai_model_name);
 
-    // Build OpenRouter models list dynamically via API (fallback to static list)
     std::vector<std::string> openrouter_models_vec = fetch_openrouter_models_via_api(g_settings.openrouter_api_key.c_str());
     if (openrouter_models_vec.empty())
         openrouter_models_vec = settings_t::openrouter_models;
@@ -180,9 +181,12 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     int copilot_model_idx = find_model_index(settings_t::copilot_models, g_settings.copilot_model_name);
 
     qstring gemini_key = g_settings.gemini_api_key.c_str();
+    qstring gemini_base_url = g_settings.gemini_base_url.c_str();
     qstring openai_key = g_settings.openai_api_key.c_str();
+    qstring openai_base_url = g_settings.openai_base_url.c_str();
     qstring openrouter_key = g_settings.openrouter_api_key.c_str();
     qstring anthropic_key = g_settings.anthropic_api_key.c_str();
+    qstring anthropic_base_url = g_settings.anthropic_base_url.c_str();
     qstring copilot_proxy_addr = g_settings.copilot_proxy_address.c_str();
     qstring bulk_delay_str;
     bulk_delay_str.sprnt("%.2f", g_settings.bulk_processing_delay);
@@ -201,14 +205,14 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         &providers_qstrvec, &provider_idx,
         &xref_count, &xref_depth, &snippet_lines,
         &bulk_delay_str, &max_tokens, &temp_str,
-        // gemini tab (3 args)
-        &gemini_key, &gemini_models_qsv, &gemini_model_idx,
-        // openai tab (3 args)
-        &openai_key, &openai_models_qsv, &openai_model_idx,
+        // gemini tab (4 args)
+        &gemini_key, &gemini_models_qsv, &gemini_model_idx, &gemini_base_url,
+        // openai tab (4 args)
+        &openai_key, &openai_models_qsv, &openai_model_idx, &openai_base_url,
         // openrouter tab (3 args)
         &openrouter_key, &openrouter_models_qsv, &openrouter_model_idx,
-        // anthropic tab (3 args)
-        &anthropic_key, &anthropic_models_qsv, &anthropic_model_idx,
+        // anthropic tab (4 args)
+        &anthropic_key, &anthropic_models_qsv, &anthropic_model_idx, &anthropic_base_url,
         // copilot tab (3 args)
         &copilot_proxy_addr, &copilot_models_qsv, &copilot_model_idx,
         // tab control (1 arg)
@@ -217,12 +221,13 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     {
         g_settings.api_provider = providers_list_items[provider_idx];
 
-
         g_settings.gemini_api_key = gemini_key.c_str();
+        g_settings.gemini_base_url = gemini_base_url.c_str();
         if (gemini_model_idx < settings_t::gemini_models.size())
             g_settings.gemini_model_name = settings_t::gemini_models[gemini_model_idx];
 
         g_settings.openai_api_key = openai_key.c_str();
+        g_settings.openai_base_url = openai_base_url.c_str();
         if (openai_model_idx < openai_models_vec.size())
             g_settings.openai_model_name = openai_models_vec[openai_model_idx];
 
@@ -231,6 +236,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
             g_settings.openrouter_model_name = openrouter_models_vec[openrouter_model_idx];
 
         g_settings.anthropic_api_key = anthropic_key.c_str();
+        g_settings.anthropic_base_url = anthropic_base_url.c_str();
         if (anthropic_model_idx < settings_t::anthropic_models.size())
             g_settings.anthropic_model_name = settings_t::anthropic_models[anthropic_model_idx];
 

@@ -1,5 +1,13 @@
 #include "aida_pro.hpp"
 
+static std::string get_trimmed_json_string(const nlohmann::json& j, const char* key, const std::string& default_val)
+{
+    std::string val = j.value(key, default_val);
+    qstring q_val = val.c_str();
+    q_val.trim2();
+    return q_val.c_str();
+}
+
 settings_t g_settings;
 
 const std::vector<std::string> settings_t::gemini_models = {
@@ -100,20 +108,21 @@ const std::vector<std::string> settings_t::copilot_models = {
     "gpt-3.5-turbo-0613",
 };
 
-// Replaced macro-based (strict) JSON mapping with tolerant serializers that keep defaults
-// when keys are missing, to preserve backward compatibility with older config files.
 static void to_json(nlohmann::json& j, const settings_t& s)
 {
     j = nlohmann::json{
         {"api_provider", s.api_provider},
         {"gemini_api_key", s.gemini_api_key},
         {"gemini_model_name", s.gemini_model_name},
+        {"gemini_base_url", s.gemini_base_url},
         {"openai_api_key", s.openai_api_key},
         {"openai_model_name", s.openai_model_name},
+        {"openai_base_url", s.openai_base_url},
         {"openrouter_api_key", s.openrouter_api_key},
         {"openrouter_model_name", s.openrouter_model_name},
         {"anthropic_api_key", s.anthropic_api_key},
         {"anthropic_model_name", s.anthropic_model_name},
+        {"anthropic_base_url", s.anthropic_base_url},
         {"copilot_proxy_address", s.copilot_proxy_address},
         {"copilot_model_name", s.copilot_model_name},
         {"xref_context_count", s.xref_context_count},
@@ -129,25 +138,23 @@ static void to_json(nlohmann::json& j, const settings_t& s)
 
 static void from_json(const nlohmann::json& j, settings_t& s)
 {
-    // Use default-constructed settings as source of defaults for missing keys
     settings_t d;
     s.api_provider = j.value("api_provider", d.api_provider);
 
-    std::string gemini_key = j.value("gemini_api_key", d.gemini_api_key);
-    s.gemini_api_key = gemini_key;
+    s.gemini_api_key = get_trimmed_json_string(j, "gemini_api_key", d.gemini_api_key);
     s.gemini_model_name = j.value("gemini_model_name", d.gemini_model_name);
+    s.gemini_base_url = get_trimmed_json_string(j, "gemini_base_url", d.gemini_base_url);
 
-    std::string openai_key = j.value("openai_api_key", d.openai_api_key);
-    s.openai_api_key = openai_key;
+    s.openai_api_key = get_trimmed_json_string(j, "openai_api_key", d.openai_api_key);
     s.openai_model_name = j.value("openai_model_name", d.openai_model_name);
+    s.openai_base_url = get_trimmed_json_string(j, "openai_base_url", d.openai_base_url);
 
-    std::string openrouter_key = j.value("openrouter_api_key", d.openrouter_api_key);
-    s.openrouter_api_key = openrouter_key;
+    s.openrouter_api_key = get_trimmed_json_string(j, "openrouter_api_key", d.openrouter_api_key);
     s.openrouter_model_name = j.value("openrouter_model_name", d.openrouter_model_name);
 
-    std::string anthropic_key = j.value("anthropic_api_key", d.anthropic_api_key);
-    s.anthropic_api_key = anthropic_key;
+    s.anthropic_api_key = get_trimmed_json_string(j, "anthropic_api_key", d.anthropic_api_key);
     s.anthropic_model_name = j.value("anthropic_model_name", d.anthropic_model_name);
+    s.anthropic_base_url = get_trimmed_json_string(j, "anthropic_base_url", d.anthropic_base_url);
 
     s.copilot_proxy_address = j.value("copilot_proxy_address", d.copilot_proxy_address);
     s.copilot_model_name = j.value("copilot_model_name", d.copilot_model_name);
@@ -236,10 +243,10 @@ static bool load_settings_from_file(settings_t& settings, const qstring& path)
         bool missing = false;
         auto req = [&](const char* key){ if (!j.contains(key)) missing = true; };
         req("api_provider");
-        req("gemini_api_key"); req("gemini_model_name");
-        req("openai_api_key"); req("openai_model_name");
+        req("gemini_api_key"); req("gemini_model_name"); req("gemini_base_url");
+        req("openai_api_key"); req("openai_model_name"); req("openai_base_url");
         req("openrouter_api_key"); req("openrouter_model_name");
-        req("anthropic_api_key"); req("anthropic_model_name");
+        req("anthropic_api_key"); req("anthropic_model_name"); req("anthropic_base_url");
         req("copilot_proxy_address"); req("copilot_model_name");
         req("xref_context_count"); req("xref_analysis_depth"); req("xref_code_snippet_lines");
         req("bulk_processing_delay"); req("max_prompt_tokens");
@@ -267,12 +274,15 @@ settings_t::settings_t() :
     api_provider(""),
     gemini_api_key(""),
     gemini_model_name("gemini-2.0-flash"),
+    gemini_base_url(""),
     openai_api_key(""),
     openai_model_name("gpt-5"),
+    openai_base_url(""),
     openrouter_api_key(""),
     openrouter_model_name("moonshotai/kimi-k2:free"),
     anthropic_api_key(""),
     anthropic_model_name("claude-3.5-sonnet-latest"),
+    anthropic_base_url(""),
     copilot_proxy_address("http://127.0.0.1:4141"),
     copilot_model_name("gpt-4.1"),
     xref_context_count(5),
@@ -298,21 +308,25 @@ void settings_t::load(aida_plugin_t* plugin_instance)
 
     if (gemini_api_key.empty() && qgetenv("GEMINI_API_KEY", &val))
     {
+        val.trim2();
         gemini_api_key = val.c_str();
         has_env_keys = true;
     }
     if (openai_api_key.empty() && qgetenv("OPENAI_API_KEY", &val))
     {
+        val.trim2();
         openai_api_key = val.c_str();
         has_env_keys = true;
     }
     if (openrouter_api_key.empty() && qgetenv("OPENROUTER_API_KEY", &val))
     {
+        val.trim2();
         openrouter_api_key = val.c_str();
         has_env_keys = true;
     }
     if (anthropic_api_key.empty() && qgetenv("ANTHROPIC_API_KEY", &val))
     {
+        val.trim2();
         anthropic_api_key = val.c_str();
         has_env_keys = true;
     }
