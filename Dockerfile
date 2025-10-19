@@ -12,10 +12,8 @@ RUN apt-get update && \
 # Set the working directory
 WORKDIR /app
 
-# Copy the IDA SDK from the build context.
-# The user must place their IDA SDK into a directory named 'idasdk'
-# in the same directory as this Dockerfile before building.
-COPY idasdk /idasdk
+# Clone the IDA SDK from the official GitHub repository.
+RUN git clone --depth 1 https://github.com/HexRaysSA/ida-sdk.git /idasdk
 ENV IDASDK /idasdk
 
 # Copy the project source code into the container

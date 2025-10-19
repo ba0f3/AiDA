@@ -125,27 +125,11 @@ For a consistent and reproducible build environment, you can build the plugin in
 ### Prerequisites
 
 *   [Docker](https://www.docker.com/products/docker-desktop/) installed and running.
-*   Your IDA SDK.
 
 ### Steps
 
-1.  **Place your IDA SDK:**
-    Create a directory named `idasdk` in the root of this project, and copy your IDA SDK into it. The `Dockerfile` is configured to look for the SDK in this specific location.
-
-    Your directory structure should look like this:
-    ```
-    .
-    ├── idasdk/
-    │   ├── include/
-    │   ├── lib/
-    │   └── ... (rest of the SDK)
-    ├── src/
-    ├── Dockerfile
-    └── ... (rest of the project files)
-    ```
-
-2.  **Build the Docker Image:**
-    Open a terminal in the project's root directory and run the following command to build the image. This will compile the plugin inside the container.
+1.  **Build the Docker Image:**
+    Open a terminal in the project's root directory and run the following command. This will automatically download the IDA SDK and compile the plugin inside the container.
 
     ```bash
     docker build -t aida-plugin .
