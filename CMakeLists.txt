@@ -1,19 +1,10 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.27)
 project(aida)
+
+set(CMAKE_CXX_STANDARD 17)
+
+include(cmake/ida-cmake/bootstrap.cmake)
+find_package(idasdk REQUIRED)
 
 add_subdirectory(libs)
 add_subdirectory(src)
-
-# aida
-if(DEFINED ENV{IDASDK})
-    set(IDA_SDK_INCLUDE_DIR "$ENV{IDASDK}/include")
-    if(EXISTS ${IDA_SDK_INCLUDE_DIR})
-        add_executable(aida ${AIDA_SRCS})
-        target_include_directories(aida PUBLIC src ${IDA_SDK_INCLUDE_DIR})
-        target_link_libraries(aida httplib nlohmann_json)
-    else()
-        message(FATAL_ERROR "IDASDK environment variable is set but the include directory does not exist: ${IDA_SDK_INCLUDE_DIR}")
-    endif()
-else()
-    message(FATAL_ERROR "IDASDK environment variable is not set. Please set it to your IDA SDK path.")
-endif()
