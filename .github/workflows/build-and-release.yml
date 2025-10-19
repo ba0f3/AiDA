@@ -1,0 +1,54 @@
+# GitHub Workflow for Building and Releasing the AiDA IDA Pro Plugin
+
+name: Build and Release
+
+# This workflow is triggered whenever a new tag starting with 'v' is pushed.
+# This is the standard practice for versioning and releasing.
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    # The workflow will run on the latest version of Ubuntu.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # This permission is required to create a release and upload assets.
+
+    steps:
+      # Step 1: Check out the repository's code.
+      # We also need to fetch the submodules (like ida-cmake) for the build to work.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      # Step 2: Build the Docker image.
+      # This command executes the Dockerfile, which handles cloning the IDA SDK
+      # and compiling the plugin. The final image will be tagged 'aida-plugin'.
+      - name: Build Docker image
+        run: docker build -t aida-plugin .
+
+      # Step 3: Create a directory to store the build artifact.
+      # This keeps the workspace clean and provides a predictable location for the compiled plugin.
+      - name: Create artifact directory
+        run: mkdir -p artifacts
+
+      # Step 4: Extract the compiled plugin from the Docker image.
+      # The multi-stage Dockerfile ensures the final image contains only the plugin.
+      # This command runs the image, cats the plugin file, and saves it to the 'artifacts' directory.
+      - name: Extract plugin from Docker image
+        run: docker run --rm --entrypoint "" aida-plugin cat /aida.so > artifacts/aida.so
+
+      # Step 5: Create a GitHub Release.
+      # This action creates a new release on GitHub, using the tag name for the release title.
+      # The `draft: true` flag means the release will be created as a draft, allowing you
+      # to review it and add release notes before publishing it.
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/aida.so # This attaches the aida.so file to the release.
+          draft: true # Creates a draft release. Set to false to publish automatically.
+          generate_release_notes: true # Automatically generates release notes from commits.

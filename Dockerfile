@@ -6,11 +6,8 @@ LABEL description="Build container for the AiDA IDA Pro plugin"
 
 # Install build dependencies
 RUN apt-get update && \
-    apt-get install -y build-essential git wget tar libssl-dev && \
+    apt-get install -y build-essential cmake git && \
     rm -rf /var/lib/apt/lists/*
-
-# Download and install CMake 3.27.1
-RUN wget -qO- "https://cmake.org/files/v3.27/cmake-3.27.1-linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
 
 # Set the working directory
 WORKDIR /app
@@ -22,26 +19,26 @@ ENV IDASDK /idasdk
 # Copy the project source code into the container
 COPY . .
 
-# check if submodules are not initialized, then tell user to run "git submodule update --init --recursive"
-RUN if [ ! -d "cmake/ida-cmake" ]; then echo "Submodules are not initialized. Please run 'git submodule update --init --recursive' to initialize them."; exit 1; fi
-
+# Initialize git submodules (required for ida-cmake).
+# This is run after copying the source, which includes the .gitmodules file.
+RUN git config --global --add safe.directory /app
+RUN git submodule update --init --recursive
 
 # Configure the CMake project
 RUN cmake -B build
-
 
 # Build the project in Release configuration
 RUN cmake --build build --config Release
 
 # Create a directory to store the final plugin and move the compiled artifact there.
 # This provides a known location to copy from in the next stage.
-RUN mkdir /plugin && find /idasdk/src/bin/plugins/ -type f -name '*.so' -exec mv {} /plugin/ \;
+RUN mkdir /plugin && find /app/build -type f -name 'aida*.*' -exec mv {} /plugin/ \;
 
 # ---
 
 # Stage 2: Final Image
 # This stage contains only the compiled plugin for easy extraction.
-FROM alpine:3.18
+FROM scratch
 
 # Copy the compiled plugin from the known location in the builder stage.
 # The final image will contain only the plugin artifact.

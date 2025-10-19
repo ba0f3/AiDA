@@ -139,7 +139,7 @@ For a consistent and reproducible build environment, you can build the plugin in
     Once the build is complete, the compiled plugin (`aida.so` or `aida.dll`) is the only file in the final image. You can extract it with this command:
 
     ```bash
-    docker run --rm --entrypoint "" aida-plugin cat /aida.so > ~/.idapro/plugins/aida.so
+    docker run --rm --entrypoint "" aida-plugin cat /aida.so > aida.so
     ```
     *(Use `/aida.dll` and `aida.dll` if building for Windows)*
 

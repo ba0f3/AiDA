@@ -1,6 +1,4 @@
-#ifdef _WIN32
 #include <Windows.h> // im sorry linux users idk what to do for you, if u have a solution make a PR and ill accept it
-#endif
 #include "aida_pro.hpp"
 #include <set>
 
@@ -1021,7 +1019,6 @@ namespace ida_utils
         return escaped;
     }
 
-#ifdef _WIN32
     bool set_clipboard_text(const qstring& text)
     {
         // im sorry linux users idk what to do for you, if u have a solution make a PR and ill accept it
@@ -1077,14 +1074,6 @@ namespace ida_utils
 
         return true;
     }
-#else
-    bool set_clipboard_text(const qstring& text)
-    {
-        // Placeholder for Linux: clipboard functionality not implemented.
-        warning("AiDA: set_clipboard_text is not implemented for Linux.");
-        return false;
-    }
-#endif
 
     std::string format_context_for_clipboard(const nlohmann::json& context)
     {
