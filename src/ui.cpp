@@ -108,24 +108,24 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         "<=:General>100>\n" // tab ctrl is 100
 
         // --- gemini ---
-        "<API Key:q11:64:64::>\n"
+        "<API Key:q11:256:64::>\n"
         "<Model Name:b12:0:40::>\n"
         "<Base URL (optional):q13:64:64::>\n"
         "<=:Gemini>100>\n"
 
         // --- openai ---
-        "<API Key:q21:64:64::>\n"
+        "<API Key:q21:256:64::>\n"
         "<Model Name:b22:0:40::>\n"
         "<Base URL (optional):q23:64:64::>\n"
         "<=:OpenAI>100>\n"
 
         // --- OpenRouter ---
-        "<API Key:q25:80:80::>\n"
+        "<API Key:q25:256:80::>\n"
         "<Model Name:b26:0:40::>\n"
         "<=:OpenRouter>100>\n"
 
         // --- Anthropic Tab ---
-        "<API Key:q31:64:64::>\n"
+        "<API Key:q31:256:64::>\n"
         "<Model Name:b32:0:40::>\n"
         "<Base URL (optional):q33:64:64::>\n"
         "<=:Anthropic>100>\n"
