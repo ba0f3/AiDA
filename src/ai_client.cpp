@@ -509,14 +509,23 @@ httplib::Headers OpenAIClient::_get_api_headers() const
 }
 json OpenAIClient::_get_api_payload(const std::string& prompt_text, double temperature) const
 {
-    return {
+    json payload = {
         {"model", _model_name},
         {"messages", {
             {{"role", "system"}, {"content", BASE_PROMPT}},
             {{"role", "user"}, {"content", prompt_text}}
-        }},
-        {"temperature", temperature}
+        }}
     };
+
+    if (_model_name.rfind("gpt-5", 0) == 0)
+    {
+        payload["reasoning_effort"] = "minimal";
+    }
+    else
+    {
+        payload["temperature"] = temperature;
+    }
+    return payload;
 }
 
 std::string OpenAIClient::_parse_api_response(const json& jres) const
