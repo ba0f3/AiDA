@@ -11,6 +11,7 @@ static std::string get_trimmed_json_string(const nlohmann::json& j, const char* 
 settings_t g_settings;
 
 const std::vector<std::string> settings_t::gemini_models = {
+    "gemini-3-pro-preview",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
@@ -36,6 +37,8 @@ const std::vector<std::string> settings_t::gemini_models = {
 };
 
 const std::vector<std::string> settings_t::openai_models = {
+  "gpt-5.1 Instant",
+  "gpt-5.1 Thinking",
   "gpt-5",
   "gpt-5-mini",
   "gpt-5-nano",
@@ -273,7 +276,7 @@ static bool load_settings_from_file(settings_t& settings, const qstring& path)
 settings_t::settings_t() :
     api_provider(""),
     gemini_api_key(""),
-    gemini_model_name("gemini-2.0-flash"),
+    gemini_model_name("gemini-2.5-flash"),
     gemini_base_url(""),
     openai_api_key(""),
     openai_model_name("gpt-5"),
